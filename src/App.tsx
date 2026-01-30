@@ -10,6 +10,7 @@ import { CartProvider } from "@/contexts/CartContext";
 // Customer Pages
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
+import CustomerAuth from "./pages/CustomerAuth";
 import Menu from "./pages/Menu";
 import ItemDetail from "./pages/ItemDetail";
 import Cart from "./pages/Cart";
@@ -55,6 +56,7 @@ const App = () => (
                 {/* Customer Routes */}
                 <Route path="/" element={<Index />} />
                 <Route path="/auth" element={<Auth />} />
+                <Route path="/customer-auth" element={<CustomerAuth />} />
                 <Route path="/book-event" element={<IndoorEventBooking />} />
                 <Route path="/cloud-kitchen" element={<CloudKitchenOrder />} />
                 <Route path="/homemade" element={<HomemadeOrder />} />

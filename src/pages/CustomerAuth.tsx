@@ -14,12 +14,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Loader2, Phone, User } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import logo from '@/assets/logo.png';
+
 const loginSchema = z.object({
   mobileNumber: z.string()
     .min(10, 'Mobile number must be 10 digits')
     .max(10, 'Mobile number must be 10 digits')
     .regex(/^\d+$/, 'Mobile number must contain only digits'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
 });
 
 const signupSchema = z.object({
@@ -28,31 +28,24 @@ const signupSchema = z.object({
     .min(10, 'Mobile number must be 10 digits')
     .max(10, 'Mobile number must be 10 digits')
     .regex(/^\d+$/, 'Mobile number must contain only digits'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
-  confirmPassword: z.string(),
   panchayatId: z.string().min(1, 'Please select a panchayat'),
   wardNumber: z.string().min(1, 'Please select a ward'),
-}).refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords don't match",
-  path: ["confirmPassword"],
 });
 
 type LoginFormData = z.infer<typeof loginSchema>;
 type SignupFormData = z.infer<typeof signupSchema>;
 
-const Auth: React.FC = () => {
+const CustomerAuth: React.FC = () => {
   const navigate = useNavigate();
-  const { signIn, signUp, user, isLoading: authLoading } = useAuth();
+  const { customerSignIn, customerSignUp, user, isLoading: authLoading } = useAuth();
   const { panchayats, getWardsForPanchayat, isLoading: locationLoading } = useLocation();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState('login');
-  const [selectedPanchayatForWards, setSelectedPanchayatForWards] = useState<string | null>(null);
 
   const loginForm = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
       mobileNumber: '',
-      password: '',
     },
   });
 
@@ -61,8 +54,6 @@ const Auth: React.FC = () => {
     defaultValues: {
       name: '',
       mobileNumber: '',
-      password: '',
-      confirmPassword: '',
       panchayatId: '',
       wardNumber: '',
     },
@@ -70,16 +61,13 @@ const Auth: React.FC = () => {
 
   const selectedPanchayatId = signupForm.watch('panchayatId');
   
-  // Get the selected panchayat object and generate ward numbers
   const selectedPanchayat = panchayats.find(p => p.id === selectedPanchayatId);
   const availableWards = selectedPanchayat ? getWardsForPanchayat(selectedPanchayat) : [];
 
-  // Reset ward when panchayat changes
   useEffect(() => {
     signupForm.setValue('wardNumber', '');
   }, [selectedPanchayatId]);
 
-  // Redirect if already logged in
   useEffect(() => {
     if (user && !authLoading) {
       navigate('/');
@@ -89,13 +77,23 @@ const Auth: React.FC = () => {
   const handleLogin = async (data: LoginFormData) => {
     setIsSubmitting(true);
     try {
-      const { error } = await signIn(data.mobileNumber, data.password);
+      const { error } = await customerSignIn(data.mobileNumber);
       if (error) {
-        toast({
-          title: "Login failed",
-          description: error.message,
-          variant: "destructive",
-        });
+        if (error.message.includes('not found')) {
+          toast({
+            title: "Account not found",
+            description: "Please register first to continue",
+            variant: "destructive",
+          });
+          setActiveTab('signup');
+          signupForm.setValue('mobileNumber', data.mobileNumber);
+        } else {
+          toast({
+            title: "Login failed",
+            description: error.message,
+            variant: "destructive",
+          });
+        }
       } else {
         toast({
           title: "Welcome back!",
@@ -111,9 +109,8 @@ const Auth: React.FC = () => {
   const handleSignup = async (data: SignupFormData) => {
     setIsSubmitting(true);
     try {
-      const { error } = await signUp(
+      const { error } = await customerSignUp(
         data.mobileNumber,
-        data.password,
         data.name,
         data.panchayatId,
         parseInt(data.wardNumber, 10)
@@ -126,11 +123,10 @@ const Auth: React.FC = () => {
         });
       } else {
         toast({
-          title: "Account created!",
-          description: "You can now log in with your mobile number",
+          title: "Welcome!",
+          description: "Your account has been created successfully",
         });
-        setActiveTab('login');
-        loginForm.setValue('mobileNumber', data.mobileNumber);
+        navigate('/');
       }
     } finally {
       setIsSubmitting(false);
@@ -147,16 +143,15 @@ const Auth: React.FC = () => {
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-background to-secondary/30 p-4">
-      {/* Logo & Brand */}
       <div className="mb-8 text-center">
         <img src={logo} alt="Penny Carbs" className="mx-auto h-20 w-auto mb-2" />
-        <p className="text-sm text-muted-foreground">Staff Portal</p>
+        <p className="text-sm text-muted-foreground">The Basic of Life</p>
       </div>
 
       <Card className="w-full max-w-md shadow-lg">
         <CardHeader className="text-center">
-          <CardTitle className="text-xl">Staff Login</CardTitle>
-          <CardDescription>Sign in to access staff portal</CardDescription>
+          <CardTitle className="text-xl">Welcome</CardTitle>
+          <CardDescription>Sign in or create an account to order food</CardDescription>
         </CardHeader>
         <CardContent>
           <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -178,7 +173,7 @@ const Auth: React.FC = () => {
                           <div className="relative">
                             <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                             <Input
-                              placeholder="Enter 10-digit mobile number"
+                              placeholder="Enter your 10-digit mobile number"
                               className="pl-10"
                               {...field}
                             />
@@ -189,23 +184,9 @@ const Auth: React.FC = () => {
                     )}
                   />
 
-                  <FormField
-                    control={loginForm.control}
-                    name="password"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Password</FormLabel>
-                        <FormControl>
-                          <Input type="password" placeholder="Enter password" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
                   <Button type="submit" className="w-full" disabled={isSubmitting}>
                     {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Login
+                    Continue
                   </Button>
                 </form>
               </Form>
@@ -308,34 +289,6 @@ const Auth: React.FC = () => {
                     />
                   </div>
 
-                  <FormField
-                    control={signupForm.control}
-                    name="password"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Password</FormLabel>
-                        <FormControl>
-                          <Input type="password" placeholder="Create a password" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={signupForm.control}
-                    name="confirmPassword"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Confirm Password</FormLabel>
-                        <FormControl>
-                          <Input type="password" placeholder="Confirm your password" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
                   <Button type="submit" className="w-full" disabled={isSubmitting || locationLoading}>
                     {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Create Account
@@ -349,9 +302,9 @@ const Auth: React.FC = () => {
 
       <div className="mt-6 text-center">
         <p className="text-sm text-muted-foreground">
-          Customer?{' '}
-          <Button variant="link" className="p-0 h-auto" onClick={() => navigate('/customer-auth')}>
-            Order food here
+          Staff or Agent?{' '}
+          <Button variant="link" className="p-0 h-auto" onClick={() => navigate('/auth')}>
+            Login here
           </Button>
         </p>
       </div>
@@ -363,4 +316,4 @@ const Auth: React.FC = () => {
   );
 };
 
-export default Auth;
+export default CustomerAuth;

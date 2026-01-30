@@ -9,8 +9,12 @@ interface AuthContextType {
   profile: Profile | null;
   role: AppRole | null;
   isLoading: boolean;
+  // Staff auth (with password)
   signIn: (mobileNumber: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (mobileNumber: string, password: string, name: string, panchayatId: string, wardNumber: number) => Promise<{ error: Error | null }>;
+  // Customer auth (passwordless)
+  customerSignIn: (mobileNumber: string) => Promise<{ error: Error | null }>;
+  customerSignUp: (mobileNumber: string, name: string, panchayatId: string, wardNumber: number) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
@@ -182,6 +186,116 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  // Customer passwordless sign in - uses mobile number as identifier
+  const customerSignIn = async (mobileNumber: string) => {
+    try {
+      // Check if customer exists in profiles
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('user_id')
+        .eq('mobile_number', mobileNumber)
+        .maybeSingle();
+
+      if (profileError) {
+        return { error: new Error(profileError.message) };
+      }
+
+      if (!profileData) {
+        return { error: new Error('Customer not found. Please register first.') };
+      }
+
+      // Use mobile number as email and a fixed pattern password for customers
+      const email = `${mobileNumber}@customer.pennycarbs.app`;
+      const password = `PC_CUSTOMER_${mobileNumber}`;
+
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        return { error: new Error(error.message) };
+      }
+
+      return { error: null };
+    } catch (error) {
+      return { error: error as Error };
+    }
+  };
+
+  // Customer passwordless sign up
+  const customerSignUp = async (
+    mobileNumber: string,
+    name: string,
+    panchayatId: string,
+    wardNumber: number
+  ) => {
+    try {
+      // Check if mobile already exists
+      const { data: existingProfile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('mobile_number', mobileNumber)
+        .maybeSingle();
+
+      if (existingProfile) {
+        return { error: new Error('An account with this mobile number already exists. Please login.') };
+      }
+
+      // Use mobile number as email and auto-generate password
+      const email = `${mobileNumber}@customer.pennycarbs.app`;
+      const password = `PC_CUSTOMER_${mobileNumber}`;
+      const redirectUrl = `${window.location.origin}/`;
+
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: redirectUrl,
+        },
+      });
+
+      if (authError) {
+        return { error: new Error(authError.message) };
+      }
+
+      if (authData.user) {
+        // Create profile
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert({
+            user_id: authData.user.id,
+            name,
+            mobile_number: mobileNumber,
+            panchayat_id: panchayatId,
+            ward_number: wardNumber,
+          });
+
+        if (profileError) {
+          console.error('Profile creation error:', profileError);
+          return { error: new Error('Failed to create profile. Please try again.') };
+        }
+
+        // Assign customer role
+        const { error: roleError } = await supabase
+          .from('user_roles')
+          .insert({
+            user_id: authData.user.id,
+            role: 'customer',
+          });
+
+        if (roleError) {
+          console.error('Role assignment error:', roleError);
+          return { error: new Error('Failed to assign role. Please contact support.') };
+        }
+      }
+
+      return { error: null };
+    } catch (error) {
+      return { error: error as Error };
+    }
+  };
+
   const signOut = async () => {
     await supabase.auth.signOut();
     setProfile(null);
@@ -204,6 +318,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isLoading,
         signIn,
         signUp,
+        customerSignIn,
+        customerSignUp,
         signOut,
         refreshProfile,
       }}
