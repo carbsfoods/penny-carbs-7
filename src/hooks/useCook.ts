@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import type { Cook, CookOrder, CookStatus } from '@/types/cook';
+import type { Cook, CookOrder, CookStatus, CookEarnings } from '@/types/cook';
 
 export function useCookProfile() {
   const { user } = useAuth();
@@ -71,10 +71,34 @@ export function useCookOrders() {
       
       // Merge cook_status from assignments
       const assignmentMap = new Map(assignments.map(a => [a.order_id, a.cook_status]));
+
+      // Fetch order items assigned to this cook
+      const { data: orderItems } = await supabase
+        .from('order_items')
+        .select(`
+          id,
+          order_id,
+          food_item_id,
+          quantity,
+          unit_price,
+          total_price,
+          food_item:food_items(id, name)
+        `)
+        .in('order_id', orderIds)
+        .eq('assigned_cook_id', profile.id);
+
+      // Group order items by order_id
+      const orderItemsMap = new Map<string, typeof orderItems>();
+      orderItems?.forEach(item => {
+        if (!orderItemsMap.has(item.order_id)) {
+          orderItemsMap.set(item.order_id, []);
+        }
+        orderItemsMap.get(item.order_id)!.push(item);
+      });
       
       // Fetch customer details separately
-      const ordersWithCustomers = await Promise.all((orders || []).map(async (order) => {
-        const { data: profile } = await supabase
+      const ordersWithDetails = await Promise.all((orders || []).map(async (order) => {
+        const { data: customerProfile } = await supabase
           .from('profiles')
           .select('name, mobile_number')
           .eq('user_id', order.customer_id)
@@ -83,11 +107,56 @@ export function useCookOrders() {
         return {
           ...order,
           cook_status: assignmentMap.get(order.id) || 'pending',
-          customer: profile || undefined,
+          customer: customerProfile || undefined,
+          order_items: orderItemsMap.get(order.id) || [],
         };
       }));
       
-      return ordersWithCustomers as CookOrder[];
+      return ordersWithDetails as CookOrder[];
+    },
+    enabled: !!profile?.id,
+  });
+}
+
+export function useCookEarnings() {
+  const { data: profile } = useCookProfile();
+
+  return useQuery({
+    queryKey: ['cook-earnings', profile?.id],
+    queryFn: async (): Promise<CookEarnings> => {
+      if (!profile?.id) {
+        return { total_orders_completed: 0, total_earnings: 0, pending_payout: 0 };
+      }
+
+      // Count completed orders (cook_status = 'ready')
+      const { data: completedAssignments, error: assignError } = await supabase
+        .from('order_assigned_cooks')
+        .select('order_id')
+        .eq('cook_id', profile.id)
+        .eq('cook_status', 'ready');
+
+      if (assignError) throw assignError;
+
+      const completedOrderIds = completedAssignments?.map(a => a.order_id) || [];
+
+      // Get settlements for this cook
+      const { data: settlements, error: settleError } = await supabase
+        .from('settlements')
+        .select('amount, status')
+        .eq('user_id', profile.user_id || '');
+
+      if (settleError) throw settleError;
+
+      const totalEarnings = settlements?.reduce((sum, s) => sum + Number(s.amount), 0) || 0;
+      const pendingPayout = settlements
+        ?.filter(s => s.status === 'pending')
+        .reduce((sum, s) => sum + Number(s.amount), 0) || 0;
+
+      return {
+        total_orders_completed: completedOrderIds.length,
+        total_earnings: totalEarnings,
+        pending_payout: pendingPayout,
+      };
     },
     enabled: !!profile?.id,
   });

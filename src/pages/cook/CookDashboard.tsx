@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useCookProfile, useCookOrders, useUpdateCookStatus, useUpdateCookAvailability } from '@/hooks/useCook';
+import { useCookProfile, useCookOrders, useUpdateCookStatus, useUpdateCookAvailability, useCookEarnings } from '@/hooks/useCook';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,7 +18,10 @@ import {
   UtensilsCrossed,
   Phone,
   MapPin,
-  Users
+  Users,
+  Wallet,
+  IndianRupee,
+  TrendingUp
 } from 'lucide-react';
 import type { CookStatus } from '@/types/cook';
 
@@ -35,6 +38,7 @@ const CookDashboard: React.FC = () => {
   const { user, signOut, isLoading: authLoading } = useAuth();
   const { data: profile, isLoading: profileLoading } = useCookProfile();
   const { data: orders, isLoading: ordersLoading } = useCookOrders();
+  const { data: earnings, isLoading: earningsLoading } = useCookEarnings();
   const updateStatus = useUpdateCookStatus();
   const updateAvailability = useUpdateCookAvailability();
 
@@ -154,6 +158,45 @@ const CookDashboard: React.FC = () => {
           </CardContent>
         </Card>
 
+        {/* Wallet / Earnings Section */}
+        <Card className="bg-gradient-to-r from-primary/10 to-primary/5 border-primary/20">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Wallet className="h-4 w-4" />
+              Wallet & Earnings
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {earningsLoading ? (
+              <Skeleton className="h-16" />
+            ) : (
+              <div className="grid grid-cols-3 gap-3">
+                <div className="text-center p-2 rounded-lg bg-background/50">
+                  <div className="flex items-center justify-center gap-1 text-lg font-bold text-primary">
+                    <IndianRupee className="h-4 w-4" />
+                    {earnings?.total_earnings?.toLocaleString() || 0}
+                  </div>
+                  <p className="text-xs text-muted-foreground">Total Earnings</p>
+                </div>
+                <div className="text-center p-2 rounded-lg bg-background/50">
+                  <div className="flex items-center justify-center gap-1 text-lg font-bold text-orange-600">
+                    <IndianRupee className="h-4 w-4" />
+                    {earnings?.pending_payout?.toLocaleString() || 0}
+                  </div>
+                  <p className="text-xs text-muted-foreground">Pending Payout</p>
+                </div>
+                <div className="text-center p-2 rounded-lg bg-background/50">
+                  <div className="flex items-center justify-center gap-1 text-lg font-bold text-green-600">
+                    <TrendingUp className="h-4 w-4" />
+                    {earnings?.total_orders_completed || 0}
+                  </div>
+                  <p className="text-xs text-muted-foreground">Completed</p>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
         {/* Stats */}
         <div className="grid grid-cols-2 gap-3">
           <Card className="p-4 text-center">
@@ -207,6 +250,32 @@ const CookDashboard: React.FC = () => {
                       )}
                     </div>
 
+                    {/* Order Items - Dishes assigned to this cook */}
+                    {order.order_items && order.order_items.length > 0 && (
+                      <div className="border rounded-lg p-3 bg-muted/30">
+                        <p className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1">
+                          <ChefHat className="h-3 w-3" />
+                          Your Dishes to Prepare
+                        </p>
+                        <div className="space-y-1.5">
+                          {order.order_items.map((item) => (
+                            <div key={item.id} className="flex items-center justify-between text-sm">
+                              <span className="font-medium">{item.food_item?.name || 'Unknown Dish'}</span>
+                              <span className="text-muted-foreground">
+                                Qty: {item.quantity} × ₹{item.unit_price}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="mt-2 pt-2 border-t flex justify-between text-sm font-medium">
+                          <span>Your Items Total</span>
+                          <span className="text-primary">
+                            ₹{order.order_items.reduce((sum, item) => sum + item.total_price, 0).toLocaleString()}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
                     {/* Customer Info */}
                     {order.customer && (
                       <div className="p-2 rounded bg-muted text-sm">
@@ -228,7 +297,7 @@ const CookDashboard: React.FC = () => {
 
                     {/* Amount */}
                     <div className="flex items-center justify-between pt-2 border-t">
-                      <span className="font-semibold">₹{order.total_amount}</span>
+                      <span className="font-semibold">Order Total: ₹{order.total_amount}</span>
 
                       {/* Action Buttons */}
                       <div className="flex gap-2">

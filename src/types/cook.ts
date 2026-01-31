@@ -22,6 +22,18 @@ export interface Cook {
 
 export type CookStatus = 'pending' | 'accepted' | 'preparing' | 'cooked' | 'ready';
 
+export interface CookOrderItem {
+  id: string;
+  food_item_id: string;
+  quantity: number;
+  unit_price: number;
+  total_price: number;
+  food_item?: {
+    id: string;
+    name: string;
+  };
+}
+
 export interface CookOrder {
   id: string;
   order_number: string;
@@ -37,4 +49,11 @@ export interface CookOrder {
     name: string;
     mobile_number: string;
   };
+  order_items?: CookOrderItem[];
+}
+
+export interface CookEarnings {
+  total_orders_completed: number;
+  total_earnings: number;
+  pending_payout: number;
 }
