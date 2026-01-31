@@ -194,6 +194,19 @@ const SubmitPlanningStep: React.FC<SubmitPlanningStepProps> = ({
               onChange={(e) => onUpdateData({ eventDetails: e.target.value })}
             />
           </div>
+
+          <div className="space-y-2">
+            <Label>Reference Mobile (Optional)</Label>
+            <Input
+              type="tel"
+              placeholder="Referrer's mobile number"
+              value={plannerData.referralMobile}
+              onChange={(e) => onUpdateData({ referralMobile: e.target.value })}
+            />
+            <p className="text-xs text-muted-foreground">
+              Enter if someone referred you
+            </p>
+          </div>
         </CardContent>
       </Card>
 

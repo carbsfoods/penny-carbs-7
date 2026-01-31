@@ -60,6 +60,7 @@ export interface PlannerData {
   eventDetails: string;
   deliveryAddress: string;
   contactNumber: string;
+  referralMobile: string;
 }
 
 const STEPS = [
@@ -92,6 +93,7 @@ const IndoorEventsPlanner: React.FC = () => {
     eventDetails: '',
     deliveryAddress: '',
     contactNumber: profile?.mobile_number || '',
+    referralMobile: '',
   });
 
   // Calculate totals
@@ -240,14 +242,14 @@ SPECIAL INSTRUCTIONS:
 ${plannerData.eventDetails || 'None'}
       `.trim();
 
-      // Get referral info from session storage and look up user
+      // Look up referrer user from mobile number (from input or session storage)
       let referredBy: string | null = null;
-      const referralMobile = sessionStorage.getItem('indoor_event_referral');
-      if (referralMobile) {
+      const referralMobileToUse = plannerData.referralMobile.trim() || sessionStorage.getItem('indoor_event_referral');
+      if (referralMobileToUse) {
         const { data: referrerProfile } = await supabase
           .from('profiles')
           .select('user_id')
-          .eq('mobile_number', referralMobile)
+          .eq('mobile_number', referralMobileToUse)
           .single();
         
         if (referrerProfile) {

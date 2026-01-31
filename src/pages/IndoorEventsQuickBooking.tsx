@@ -42,6 +42,7 @@ const IndoorEventsQuickBooking: React.FC = () => {
   const [eventDetails, setEventDetails] = useState('');
   const [deliveryAddress, setDeliveryAddress] = useState('');
   const [selectedItems, setSelectedItems] = useState<Map<string, SelectedItem>>(new Map());
+  const [referralMobile, setReferralMobile] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
 
@@ -152,14 +153,14 @@ const IndoorEventsQuickBooking: React.FC = () => {
             .join(', ')
         : 'No specific dishes selected';
 
-      // Get referral info from session storage and look up user
+      // Look up referrer user from mobile number (from input or session storage)
       let referredBy: string | null = null;
-      const referralMobile = sessionStorage.getItem('indoor_event_referral');
-      if (referralMobile) {
+      const referralMobileToUse = referralMobile.trim() || sessionStorage.getItem('indoor_event_referral');
+      if (referralMobileToUse) {
         const { data: referrerProfile } = await supabase
           .from('profiles')
           .select('user_id')
-          .eq('mobile_number', referralMobile)
+          .eq('mobile_number', referralMobileToUse)
           .single();
         
         if (referrerProfile) {
@@ -515,6 +516,19 @@ const IndoorEventsQuickBooking: React.FC = () => {
                 📍 Ward {selectedWardNumber}, {selectedPanchayat.name}
               </p>
             )}
+          </div>
+
+          <div className="space-y-2">
+            <Label>Reference Mobile (Optional)</Label>
+            <Input
+              type="tel"
+              placeholder="Referrer's mobile number"
+              value={referralMobile}
+              onChange={(e) => setReferralMobile(e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">
+              Enter if someone referred you
+            </p>
           </div>
 
           <div className="flex gap-3">
