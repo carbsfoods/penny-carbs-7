@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { z } from 'zod';
@@ -18,9 +18,19 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/hooks/use-toast';
-import { ArrowLeft, Plus, ChefHat, Phone, MapPin, Loader2, Calendar, Users } from 'lucide-react';
+import { ArrowLeft, Plus, ChefHat, Phone, MapPin, Loader2, Calendar, Users, Search, User, CheckCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import type { Cook } from '@/types/cook';
+
+interface StaffProfile {
+  id: string;
+  user_id: string;
+  name: string;
+  mobile_number: string;
+  panchayat_id: string | null;
+  ward_number: number | null;
+  panchayat?: { name: string };
+}
 
 const cookSchema = z.object({
   kitchenName: z.string().min(2, 'Kitchen name is required'),
@@ -31,6 +41,7 @@ const cookSchema = z.object({
   password: z.string().min(6, 'Password must be at least 6 characters'),
   panchayatId: z.string().min(1, 'Please select a panchayat'),
   allowedOrderTypes: z.array(z.string()).min(1, 'Select at least one order type'),
+  userId: z.string().optional(),
 });
 
 type CookFormData = z.infer<typeof cookSchema>;
@@ -71,6 +82,12 @@ const AdminCooks: React.FC = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState('cooks');
+  
+  // Staff search state
+  const [searchMobile, setSearchMobile] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchResults, setSearchResults] = useState<StaffProfile[]>([]);
+  const [selectedStaff, setSelectedStaff] = useState<StaffProfile | null>(null);
 
   const { data: cooks, isLoading: cooksLoading } = useQuery({
     queryKey: ['admin-cooks'],
@@ -179,8 +196,78 @@ const AdminCooks: React.FC = () => {
       password: '',
       panchayatId: '',
       allowedOrderTypes: ['indoor_events', 'cloud_kitchen', 'homemade'],
+      userId: '',
     },
   });
+
+  // Search staff by mobile number
+  const handleSearchStaff = useCallback(async () => {
+    if (searchMobile.length < 3) {
+      toast({
+        title: "Enter at least 3 digits",
+        description: "Please enter at least 3 digits to search",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSearching(true);
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select(`
+          id, user_id, name, mobile_number, panchayat_id, ward_number,
+          panchayat:panchayats(name)
+        `)
+        .ilike('mobile_number', `%${searchMobile}%`)
+        .limit(10);
+
+      if (error) throw error;
+      setSearchResults(data as StaffProfile[]);
+      
+      if (data.length === 0) {
+        toast({
+          title: "No results",
+          description: "No staff found with this mobile number",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Search failed",
+        description: "Failed to search for staff",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSearching(false);
+    }
+  }, [searchMobile]);
+
+  // Select a staff member and prefill form
+  const handleSelectStaff = (staff: StaffProfile) => {
+    setSelectedStaff(staff);
+    form.setValue('mobileNumber', staff.mobile_number);
+    form.setValue('kitchenName', staff.name + "'s Kitchen");
+    if (staff.panchayat_id) {
+      form.setValue('panchayatId', staff.panchayat_id);
+    }
+    form.setValue('userId', staff.user_id);
+    setSearchResults([]);
+  };
+
+  // Clear selected staff
+  const handleClearSelection = () => {
+    setSelectedStaff(null);
+    form.reset();
+    setSearchMobile('');
+  };
+
+  // Reset dialog state when closing
+  const handleDialogChange = (open: boolean) => {
+    setIsDialogOpen(open);
+    if (!open) {
+      handleClearSelection();
+    }
+  };
 
   const handleSubmit = async (data: CookFormData) => {
     setIsSubmitting(true);
@@ -204,7 +291,8 @@ const AdminCooks: React.FC = () => {
           mobile_number: data.mobileNumber,
           panchayat_id: data.panchayatId,
           allowed_order_types: data.allowedOrderTypes,
-          password_hash: data.password, // Store password directly
+          password_hash: data.password,
+          user_id: data.userId || null, // Link to existing user if selected from staff
           created_by: user?.id,
         });
 
@@ -215,7 +303,7 @@ const AdminCooks: React.FC = () => {
         description: `${data.kitchenName} has been registered. Login: Mobile Number + Password`,
       });
 
-      form.reset();
+      handleClearSelection();
       setIsDialogOpen(false);
       queryClient.invalidateQueries({ queryKey: ['admin-cooks'] });
     } catch (error: any) {
@@ -312,7 +400,7 @@ const AdminCooks: React.FC = () => {
             </Button>
             <h1 className="text-lg font-semibold">Cook Management</h1>
           </div>
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <Dialog open={isDialogOpen} onOpenChange={handleDialogChange}>
             <DialogTrigger asChild>
               <Button size="sm">
                 <Plus className="h-4 w-4 mr-1" />
@@ -326,6 +414,90 @@ const AdminCooks: React.FC = () => {
                   Register New Cook
                 </DialogTitle>
               </DialogHeader>
+
+              {/* Staff Search Section */}
+              <div className="border rounded-lg p-3 bg-muted/50 space-y-3">
+                <p className="text-sm font-medium">Search from Staff Database</p>
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Enter mobile number..."
+                      className="pl-10"
+                      value={searchMobile}
+                      onChange={(e) => setSearchMobile(e.target.value.replace(/\D/g, ''))}
+                      maxLength={10}
+                    />
+                  </div>
+                  <Button 
+                    type="button" 
+                    variant="secondary" 
+                    onClick={handleSearchStaff}
+                    disabled={isSearching}
+                  >
+                    {isSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                  </Button>
+                </div>
+
+                {/* Search Results */}
+                {searchResults.length > 0 && (
+                  <div className="space-y-2 max-h-40 overflow-y-auto">
+                    {searchResults.map((staff) => (
+                      <div
+                        key={staff.id}
+                        onClick={() => handleSelectStaff(staff)}
+                        className="flex items-center gap-3 p-2 rounded-md border bg-card cursor-pointer hover:bg-accent transition-colors"
+                      >
+                        <div className="p-2 rounded-full bg-primary/10">
+                          <User className="h-4 w-4 text-primary" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm truncate">{staff.name}</p>
+                          <p className="text-xs text-muted-foreground">{staff.mobile_number}</p>
+                        </div>
+                        {staff.panchayat && (
+                          <Badge variant="outline" className="text-xs shrink-0">
+                            {staff.panchayat.name}
+                          </Badge>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Selected Staff Indicator */}
+                {selectedStaff && (
+                  <div className="flex items-center gap-2 p-2 rounded-md bg-primary/10 border border-primary/30">
+                    <CheckCircle className="h-4 w-4 text-primary" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-primary truncate">
+                        {selectedStaff.name}
+                      </p>
+                      <p className="text-xs text-muted-foreground">{selectedStaff.mobile_number}</p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleClearSelection}
+                    >
+                      Clear
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-background px-2 text-muted-foreground">
+                    Or enter manually
+                  </span>
+                </div>
+              </div>
+
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
 
@@ -352,7 +524,12 @@ const AdminCooks: React.FC = () => {
                         <FormControl>
                           <div className="relative">
                             <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                            <Input placeholder="10-digit mobile" className="pl-10" {...field} />
+                            <Input 
+                              placeholder="10-digit mobile" 
+                              className="pl-10" 
+                              disabled={!!selectedStaff}
+                              {...field} 
+                            />
                           </div>
                         </FormControl>
                         <FormMessage />
