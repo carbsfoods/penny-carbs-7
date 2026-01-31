@@ -2,13 +2,14 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import type { FoodItemWithImages, ServiceType, FoodCategory } from '@/types/database';
+import type { FoodItemWithImages, ServiceType, FoodCategory, Panchayat } from '@/types/database';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
+import { Checkbox } from '@/components/ui/checkbox';
 import { 
   Select, 
   SelectContent, 
@@ -25,6 +26,7 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { 
   Plus, 
   Search, 
@@ -48,6 +50,7 @@ const AdminItems: React.FC = () => {
   
   const [items, setItems] = useState<FoodItemWithImages[]>([]);
   const [categories, setCategories] = useState<FoodCategory[]>([]);
+  const [panchayats, setPanchayats] = useState<Panchayat[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterServiceType, setFilterServiceType] = useState<string>('all');
@@ -61,10 +64,13 @@ const AdminItems: React.FC = () => {
     description: '',
     price: '',
     service_type: 'cloud_kitchen' as ServiceType,
+    service_types: [] as string[],
     category_id: '',
     is_vegetarian: false,
     is_available: true,
     preparation_time_minutes: '',
+    available_all_panchayats: true,
+    available_panchayat_ids: [] as string[],
   });
 
   const isAdmin = role === 'super_admin' || role === 'admin';
@@ -75,7 +81,7 @@ const AdminItems: React.FC = () => {
 
   const fetchData = async () => {
     try {
-      const [itemsRes, categoriesRes] = await Promise.all([
+      const [itemsRes, categoriesRes, panchayatsRes] = await Promise.all([
         supabase
           .from('food_items')
           .select(`
@@ -88,10 +94,16 @@ const AdminItems: React.FC = () => {
           .from('food_categories')
           .select('*')
           .order('name'),
+        supabase
+          .from('panchayats')
+          .select('*')
+          .eq('is_active', true)
+          .order('name'),
       ]);
 
       if (itemsRes.data) setItems(itemsRes.data as FoodItemWithImages[]);
       if (categoriesRes.data) setCategories(categoriesRes.data as FoodCategory[]);
+      if (panchayatsRes.data) setPanchayats(panchayatsRes.data as Panchayat[]);
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
@@ -131,15 +143,27 @@ const AdminItems: React.FC = () => {
       setEditingItem(item);
       const primaryImage = item.images?.find(img => img.is_primary) || item.images?.[0];
       setUploadedImageUrl(primaryImage?.image_url || null);
+      // Get service_types from item or fallback to service_type
+      const itemWithExtras = item as FoodItemWithImages & { 
+        service_types?: string[]; 
+        available_all_panchayats?: boolean;
+        available_panchayat_ids?: string[];
+      };
+      const serviceTypesArray = itemWithExtras.service_types?.length 
+        ? itemWithExtras.service_types 
+        : [item.service_type];
       setFormData({
         name: item.name,
         description: item.description || '',
         price: item.price.toString(),
         service_type: item.service_type,
+        service_types: serviceTypesArray,
         category_id: item.category_id || '',
         is_vegetarian: item.is_vegetarian,
         is_available: item.is_available,
         preparation_time_minutes: item.preparation_time_minutes?.toString() || '',
+        available_all_panchayats: itemWithExtras.available_all_panchayats ?? true,
+        available_panchayat_ids: itemWithExtras.available_panchayat_ids || [],
       });
     } else {
       setEditingItem(null);
@@ -149,10 +173,13 @@ const AdminItems: React.FC = () => {
         description: '',
         price: '',
         service_type: 'cloud_kitchen',
+        service_types: [],
         category_id: '',
         is_vegetarian: false,
         is_available: true,
         preparation_time_minutes: '',
+        available_all_panchayats: true,
+        available_panchayat_ids: [],
       });
     }
     setIsDialogOpen(true);
@@ -168,18 +195,30 @@ const AdminItems: React.FC = () => {
       return;
     }
 
+    if (formData.service_types.length === 0) {
+      toast({
+        title: 'Validation Error',
+        description: 'Please select at least one service type',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     try {
       const itemData = {
         name: formData.name,
         description: formData.description || null,
         price: parseFloat(formData.price),
-        service_type: formData.service_type,
+        service_type: formData.service_types[0] as ServiceType, // Primary service type
+        service_types: formData.service_types,
         category_id: formData.category_id || null,
         is_vegetarian: formData.is_vegetarian,
         is_available: formData.is_available,
         preparation_time_minutes: formData.preparation_time_minutes 
           ? parseInt(formData.preparation_time_minutes) 
           : null,
+        available_all_panchayats: formData.available_all_panchayats,
+        available_panchayat_ids: formData.available_all_panchayats ? [] : formData.available_panchayat_ids,
       };
 
       if (editingItem) {
@@ -368,9 +407,14 @@ const AdminItems: React.FC = () => {
                         )}
                       </div>
                       <p className="text-sm text-muted-foreground">
-                        ₹{item.price} • {item.service_type.replace('_', ' ')}
+                        ₹{item.price}
                       </p>
-                      <div className="mt-1 flex items-center gap-2">
+                      <div className="mt-1 flex flex-wrap items-center gap-1">
+                        {((item as any).service_types?.length ? (item as any).service_types : [item.service_type]).map((st: string) => (
+                          <Badge key={st} variant="outline" className="text-xs">
+                            {st.replace('_', ' ')}
+                          </Badge>
+                        ))}
                         <Badge variant={item.is_available ? 'default' : 'secondary'}>
                           {item.is_available ? 'Available' : 'Unavailable'}
                         </Badge>
@@ -471,23 +515,35 @@ const AdminItems: React.FC = () => {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label>Service Type</Label>
-              <Select 
-                value={formData.service_type} 
-                onValueChange={(v) => setFormData({ ...formData, service_type: v as ServiceType })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-popover">
-                  {serviceTypes.map((type) => (
-                    <SelectItem key={type.value} value={type.value}>
+            <div className="space-y-3">
+              <Label>Service Types *</Label>
+              <p className="text-xs text-muted-foreground">Select all modules where this item is available</p>
+              <div className="space-y-2">
+                {serviceTypes.map((type) => (
+                  <div key={type.value} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`service-${type.value}`}
+                      checked={formData.service_types.includes(type.value)}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setFormData({ 
+                            ...formData, 
+                            service_types: [...formData.service_types, type.value] 
+                          });
+                        } else {
+                          setFormData({ 
+                            ...formData, 
+                            service_types: formData.service_types.filter(t => t !== type.value) 
+                          });
+                        }
+                      }}
+                    />
+                    <Label htmlFor={`service-${type.value}`} className="font-normal cursor-pointer">
                       {type.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                    </Label>
+                  </div>
+                ))}
+              </div>
             </div>
 
             <div className="space-y-2">
@@ -502,7 +558,7 @@ const AdminItems: React.FC = () => {
                 <SelectContent className="bg-popover">
                   {categories
                     .filter(c => 
-                      c.service_types?.includes(formData.service_type) || 
+                      formData.service_types.some(st => c.service_types?.includes(st)) || 
                       (c.service_types?.length === 0)
                     )
                     .map((cat) => (
@@ -512,6 +568,61 @@ const AdminItems: React.FC = () => {
                     ))}
                 </SelectContent>
               </Select>
+            </div>
+
+            {/* Panchayat Availability */}
+            <div className="space-y-3">
+              <Label>Panchayat Availability</Label>
+              <RadioGroup
+                value={formData.available_all_panchayats ? 'all' : 'selected'}
+                onValueChange={(v) => setFormData({ 
+                  ...formData, 
+                  available_all_panchayats: v === 'all',
+                  available_panchayat_ids: v === 'all' ? [] : formData.available_panchayat_ids
+                })}
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="all" id="panchayat-all" />
+                  <Label htmlFor="panchayat-all" className="font-normal cursor-pointer">
+                    Available in all Panchayats
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="selected" id="panchayat-selected" />
+                  <Label htmlFor="panchayat-selected" className="font-normal cursor-pointer">
+                    Available in selected Panchayats only
+                  </Label>
+                </div>
+              </RadioGroup>
+
+              {!formData.available_all_panchayats && (
+                <div className="max-h-40 overflow-y-auto border rounded-md p-2 space-y-1">
+                  {panchayats.map((p) => (
+                    <div key={p.id} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`panchayat-${p.id}`}
+                        checked={formData.available_panchayat_ids.includes(p.id)}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setFormData({ 
+                              ...formData, 
+                              available_panchayat_ids: [...formData.available_panchayat_ids, p.id] 
+                            });
+                          } else {
+                            setFormData({ 
+                              ...formData, 
+                              available_panchayat_ids: formData.available_panchayat_ids.filter(id => id !== p.id) 
+                            });
+                          }
+                        }}
+                      />
+                      <Label htmlFor={`panchayat-${p.id}`} className="font-normal text-sm cursor-pointer">
+                        {p.name}
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="flex items-center justify-between">
