@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useCart } from '@/contexts/CartContext';
+import { useLocation } from '@/contexts/LocationContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -16,17 +17,20 @@ interface FeaturedItem {
   discount_percent: number | null;
   discount_amount: number | null;
   service_type: string;
+  available_all_panchayats: boolean | null;
+  available_panchayat_ids: string[] | null;
   images: { image_url: string; is_primary: boolean }[];
 }
 
 const FeaturedItems: React.FC = () => {
   const navigate = useNavigate();
   const { addToCart } = useCart();
+  const { selectedPanchayat } = useLocation();
 
   const { data: items, isLoading } = useQuery({
-    queryKey: ['featured-items'],
+    queryKey: ['featured-items', selectedPanchayat?.id],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('food_items')
         .select(`
           id,
@@ -35,11 +39,21 @@ const FeaturedItems: React.FC = () => {
           discount_percent,
           discount_amount,
           service_type,
+          available_all_panchayats,
+          available_panchayat_ids,
           images:food_item_images(image_url, is_primary)
         `)
         .eq('is_featured', true)
-        .eq('is_available', true)
-        .limit(8);
+        .eq('is_available', true);
+
+      // Filter by panchayat availability
+      if (selectedPanchayat) {
+        query = query.or(
+          `available_all_panchayats.eq.true,available_panchayat_ids.cs.{${selectedPanchayat.id}}`
+        );
+      }
+
+      const { data, error } = await query.limit(8);
 
       if (error) throw error;
       return data as FeaturedItem[];

@@ -2,12 +2,13 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useCart } from '@/contexts/CartContext';
+import { useLocation } from '@/contexts/LocationContext';
 import type { FoodItemWithImages, ServiceType } from '@/types/database';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Plus, Clock, ChevronRight } from 'lucide-react';
-import { toast } from '@/hooks/use-toast';
+
 interface PopularItemsProps {
   serviceType: ServiceType;
   title: string;
@@ -15,11 +16,13 @@ interface PopularItemsProps {
   gradientClass?: string;
   bgGradient?: string;
 }
+
 const serviceTypeLabels: Record<ServiceType, string> = {
   indoor_events: 'Event Special',
   cloud_kitchen: 'Chef\'s Choice',
   homemade: 'Home Fresh'
 };
+
 const PopularItems: React.FC<PopularItemsProps> = ({
   serviceType,
   title,
@@ -28,21 +31,32 @@ const PopularItems: React.FC<PopularItemsProps> = ({
   bgGradient
 }) => {
   const navigate = useNavigate();
-  const {
-    addToCart
-  } = useCart();
+  const { addToCart } = useCart();
+  const { selectedPanchayat } = useLocation();
   const [items, setItems] = useState<FoodItemWithImages[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
   useEffect(() => {
     const fetchItems = async () => {
       try {
-        const {
-          data,
-          error
-        } = await supabase.from('food_items').select(`
+        let query = supabase
+          .from('food_items')
+          .select(`
             *,
             images:food_item_images(*)
-          `).eq('service_type', serviceType).eq('is_available', true).limit(limit);
+          `)
+          .eq('service_type', serviceType)
+          .eq('is_available', true);
+
+        // Filter by panchayat availability
+        if (selectedPanchayat) {
+          query = query.or(
+            `available_all_panchayats.eq.true,available_panchayat_ids.cs.{${selectedPanchayat.id}}`
+          );
+        }
+
+        const { data, error } = await query.limit(limit);
+
         if (error) throw error;
         setItems(data as FoodItemWithImages[]);
       } catch (error) {
@@ -52,7 +66,7 @@ const PopularItems: React.FC<PopularItemsProps> = ({
       }
     };
     fetchItems();
-  }, [serviceType, limit]);
+  }, [serviceType, limit, selectedPanchayat]);
   const handleAddToCart = async (e: React.MouseEvent, item: FoodItemWithImages) => {
     e.stopPropagation();
     await addToCart(item.id);
@@ -82,7 +96,7 @@ const PopularItems: React.FC<PopularItemsProps> = ({
           <ChevronRight className="ml-1 h-4 w-4" />
         </Button>
       </div>
-      <div className="flex gap-4 overflow-x-auto px-4 pb-2 no-scrollbar bg-rose-100">
+      <div className="flex gap-4 overflow-x-auto px-4 pb-2 no-scrollbar">
         {items.map(item => {
         const primaryImage = item.images?.find(img => img.is_primary) || item.images?.[0];
         const isIndoorEvents = serviceType === 'indoor_events';
