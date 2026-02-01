@@ -243,7 +243,7 @@ const IndoorEventsQuickBooking: React.FC = () => {
   // Step completion checks
   const isEventTypeComplete = !!selectedEventType;
   const isFoodComplete = true; // Optional step
-  const isDetailsComplete = !!eventDate && !!contactNumber && guestCount >= 10;
+  const isDetailsComplete = !!eventDate && !!contactNumber;
   const isVenueComplete = !!deliveryAddress.trim();
 
   const canSubmit = isEventTypeComplete && isDetailsComplete && isVenueComplete;
@@ -332,7 +332,7 @@ const IndoorEventsQuickBooking: React.FC = () => {
           icon={<Users className="h-6 w-6" />}
           isCompleted={isDetailsComplete}
           isActive={activeDialog === 'details'}
-          summary={eventDate ? `${format(eventDate, 'MMM d')} • ${guestCount} guests` : undefined}
+          summary={eventDate ? format(eventDate, 'MMM d, yyyy') : undefined}
           onClick={() => setActiveDialog('details')}
         />
 
@@ -457,18 +457,6 @@ const IndoorEventsQuickBooking: React.FC = () => {
               type="time"
               value={eventTime}
               onChange={(e) => setEventTime(e.target.value)}
-            />
-          </div>
-
-          {/* Guest Count */}
-          <div className="space-y-2">
-            <Label>Number of Guests *</Label>
-            <Input
-              type="number"
-              min={10}
-              max={1000}
-              value={guestCount}
-              onChange={(e) => setGuestCount(parseInt(e.target.value) || 50)}
             />
           </div>
 

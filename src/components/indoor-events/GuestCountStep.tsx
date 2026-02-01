@@ -12,7 +12,7 @@ interface GuestCountStepProps {
   onBack: () => void;
 }
 
-const presetCounts = [25, 50, 100, 150, 200, 300, 500];
+const presetCounts = [1, 10, 25, 50, 100, 150, 200, 300];
 
 const GuestCountStep: React.FC<GuestCountStepProps> = ({
   guestCount,
@@ -35,10 +35,10 @@ const GuestCountStep: React.FC<GuestCountStepProps> = ({
             <Users className="h-8 w-8 text-indoor-events" />
             <Input
               type="number"
-              min={10}
+              min={1}
               max={1000}
               value={guestCount}
-              onChange={(e) => onChange(parseInt(e.target.value) || 10)}
+              onChange={(e) => onChange(parseInt(e.target.value) || 1)}
               className="w-24 text-center text-2xl font-bold h-12"
             />
             <span className="text-muted-foreground">guests</span>
@@ -47,14 +47,14 @@ const GuestCountStep: React.FC<GuestCountStepProps> = ({
           <Slider
             value={[guestCount]}
             onValueChange={([value]) => onChange(value)}
-            min={10}
+            min={1}
             max={500}
-            step={5}
+            step={1}
             className="my-4"
           />
 
           <div className="flex justify-between text-xs text-muted-foreground">
-            <span>10</span>
+            <span>1</span>
             <span>500+</span>
           </div>
         </CardContent>
@@ -85,7 +85,7 @@ const GuestCountStep: React.FC<GuestCountStepProps> = ({
         <Button
           className="flex-1 bg-indoor-events hover:bg-indoor-events/90"
           onClick={onNext}
-          disabled={guestCount < 10}
+          disabled={guestCount < 1}
         >
           Continue
         </Button>
