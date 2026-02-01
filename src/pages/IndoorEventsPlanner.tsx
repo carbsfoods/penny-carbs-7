@@ -157,13 +157,14 @@ const IndoorEventsPlanner: React.FC = () => {
   // Get step index helper
   const getStepIndex = (stepId: string) => STEPS.findIndex((s) => s.id === stepId);
 
-  // Open next step in sequence
+  // Open next step in sequence with slight delay for smooth transition
   const openNextStep = (currentStepId: string) => {
     const currentIndex = getStepIndex(currentStepId);
     if (currentIndex < STEPS.length - 1) {
-      setActiveDialog(STEPS[currentIndex + 1].id);
-    } else {
-      setActiveDialog(null);
+      // Small delay to allow dialog close animation
+      setTimeout(() => {
+        setActiveDialog(STEPS[currentIndex + 1].id);
+      }, 150);
     }
   };
 
@@ -175,7 +176,8 @@ const IndoorEventsPlanner: React.FC = () => {
   // Complete step and auto-advance to next
   const completeAndAdvance = (stepId: string) => {
     setCompletedSteps((prev) => new Set([...prev, stepId]));
-    openNextStep(stepId);
+    setActiveDialog(null); // Close current dialog first
+    openNextStep(stepId);  // Then open next after delay
   };
 
   // Complete step and close (for final step or manual close)
