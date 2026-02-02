@@ -61,14 +61,21 @@ const CustomerDivisionCard: React.FC<CustomerDivisionCardProps> = ({
 
         <div className="mt-3">
           {division.is_ordering_open ? (
-            <Badge variant="secondary" className="text-xs">
-              <Clock className="h-3 w-3 mr-1" />
-              {division.time_until_cutoff?.hours}h {division.time_until_cutoff?.minutes}m left
-            </Badge>
+            division.status_label === 'closing_soon' ? (
+              <Badge variant="outline" className="text-xs border-amber-300 bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300">
+                <Clock className="h-3 w-3 mr-1" />
+                Closing soon • {division.time_until_cutoff?.minutes}m left
+              </Badge>
+            ) : (
+              <Badge variant="outline" className="text-xs border-green-300 bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300">
+                <Clock className="h-3 w-3 mr-1" />
+                Open • {division.time_until_cutoff?.hours}h {division.time_until_cutoff?.minutes}m left
+              </Badge>
+            )
           ) : (
             <Badge variant="destructive" className="text-xs">
               <AlertCircle className="h-3 w-3 mr-1" />
-              Closed
+              Closed for today
             </Badge>
           )}
         </div>
