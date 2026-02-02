@@ -60,11 +60,20 @@ const IndoorEventsQuickBooking: React.FC = () => {
     return new Map();
   };
 
+  const getInitialGuestCount = (): number => {
+    const stored = sessionStorage.getItem('indoor_event_guest_count');
+    if (stored) {
+      sessionStorage.removeItem('indoor_event_guest_count');
+      return parseInt(stored) || 50;
+    }
+    return 50;
+  };
+
   const [activeDialog, setActiveDialog] = useState<DialogStep>(null);
   const [selectedEventType, setSelectedEventType] = useState<EventType | null>(getInitialEventType);
   const [eventDate, setEventDate] = useState<Date | undefined>();
   const [eventTime, setEventTime] = useState('');
-  const [guestCount, setGuestCount] = useState<number>(50);
+  const [guestCount, setGuestCount] = useState<number>(getInitialGuestCount);
   const [contactNumber, setContactNumber] = useState(profile?.mobile_number || '');
   const [eventDetails, setEventDetails] = useState('');
   const [deliveryAddress, setDeliveryAddress] = useState('');

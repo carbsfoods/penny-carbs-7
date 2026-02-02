@@ -104,11 +104,22 @@ const IndoorEventsPlanner: React.FC = () => {
     return [];
   };
 
+  const getInitialGuestCount = (): number => {
+    const stored = sessionStorage.getItem('indoor_event_guest_count');
+    if (stored) {
+      sessionStorage.removeItem('indoor_event_guest_count');
+      return parseInt(stored) || 50;
+    }
+    return 50;
+  };
+
   const initialEventType = getInitialEventType();
   const initialFoods = getInitialFoods();
+  const initialGuestCount = getInitialGuestCount();
   const initialCompletedSteps = new Set<string>();
   if (initialEventType) initialCompletedSteps.add('event-type');
   if (initialFoods.length > 0) initialCompletedSteps.add('food');
+  if (initialGuestCount !== 50) initialCompletedSteps.add('guests');
 
   const [activeDialog, setActiveDialog] = useState<string | null>(null);
   const [completedSteps, setCompletedSteps] = useState<Set<string>>(initialCompletedSteps);
@@ -117,7 +128,7 @@ const IndoorEventsPlanner: React.FC = () => {
 
   const [plannerData, setPlannerData] = useState<PlannerData>({
     eventType: initialEventType,
-    guestCount: 50,
+    guestCount: initialGuestCount,
     selectedFoods: initialFoods,
     selectedServices: [],
     eventDate: undefined,

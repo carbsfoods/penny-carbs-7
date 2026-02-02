@@ -3,7 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, Zap, Calculator, CalendarHeart, UserPlus, X } from 'lucide-react';
+import { Slider } from '@/components/ui/slider';
+import { Card, CardContent } from '@/components/ui/card';
+import { ArrowLeft, Zap, Calculator, CalendarHeart, UserPlus, X, Users } from 'lucide-react';
 import BottomNav from '@/components/customer/BottomNav';
 import EventTypeSelector from '@/components/events/EventTypeSelector';
 import StepDialog from '@/components/indoor-events/StepDialog';
@@ -17,6 +19,9 @@ interface SelectedItem {
 }
 
 type BookingMode = 'quick' | 'planner' | null;
+type PopupStep = 'guest-count' | 'food-selection' | null;
+
+const presetCounts = [10, 25, 50, 100, 150, 200, 300];
 
 const IndoorEvents: React.FC = () => {
   const navigate = useNavigate();
@@ -26,7 +31,8 @@ const IndoorEvents: React.FC = () => {
   
   // Popup state
   const [bookingMode, setBookingMode] = useState<BookingMode>(null);
-  const [showFoodSelection, setShowFoodSelection] = useState(false);
+  const [popupStep, setPopupStep] = useState<PopupStep>(null);
+  const [guestCount, setGuestCount] = useState<number>(50);
   const [selectedItems, setSelectedItems] = useState<Map<string, SelectedItem>>(new Map());
 
   const handleBookingClick = (mode: BookingMode) => {
@@ -40,9 +46,16 @@ const IndoorEvents: React.FC = () => {
     }
     sessionStorage.setItem('indoor_event_type', JSON.stringify(selectedEventType));
     
-    // Set mode and open food selection popup
+    // Set mode and open guest count popup first
     setBookingMode(mode);
-    setShowFoodSelection(true);
+    setPopupStep('guest-count');
+  };
+
+  const handleGuestCountContinue = () => {
+    // Store guest count for the booking pages
+    sessionStorage.setItem('indoor_event_guest_count', guestCount.toString());
+    // Move to food selection popup
+    setPopupStep('food-selection');
   };
 
   const handleFoodSelectionContinue = () => {
@@ -55,7 +68,7 @@ const IndoorEvents: React.FC = () => {
     }));
     sessionStorage.setItem('indoor_event_items', JSON.stringify(itemsArray));
     
-    setShowFoodSelection(false);
+    setPopupStep(null);
     
     // Navigate to the appropriate page
     if (bookingMode === 'quick') {
@@ -67,7 +80,7 @@ const IndoorEvents: React.FC = () => {
 
   const handleSkipFoodSelection = () => {
     sessionStorage.removeItem('indoor_event_items');
-    setShowFoodSelection(false);
+    setPopupStep(null);
     
     if (bookingMode === 'quick') {
       navigate('/indoor-events/quick-booking');
@@ -222,12 +235,87 @@ const IndoorEvents: React.FC = () => {
         </p>
       </main>
 
-      {/* Food Selection Popup */}
+      {/* Guest Count Popup */}
       <StepDialog
-        open={showFoodSelection}
+        open={popupStep === 'guest-count'}
         onOpenChange={(open) => {
           if (!open) {
-            setShowFoodSelection(false);
+            setPopupStep(null);
+            setBookingMode(null);
+          }
+        }}
+        title="How Many Guests?"
+      >
+        <div className="space-y-6">
+          <p className="text-sm text-muted-foreground text-center">
+            This helps us calculate portion sizes and pricing
+          </p>
+
+          <Card className="border-indoor-events/30">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-center gap-4 mb-6">
+                <Users className="h-8 w-8 text-indoor-events" />
+                <Input
+                  type="number"
+                  min={1}
+                  max={1000}
+                  value={guestCount}
+                  onChange={(e) => setGuestCount(parseInt(e.target.value) || 1)}
+                  className="w-24 text-center text-2xl font-bold h-12"
+                />
+                <span className="text-muted-foreground">guests</span>
+              </div>
+
+              <Slider
+                value={[guestCount]}
+                onValueChange={([value]) => setGuestCount(value)}
+                min={1}
+                max={500}
+                step={1}
+                className="my-4"
+              />
+
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>1</span>
+                <span>500+</span>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Quick Presets */}
+          <div className="space-y-2">
+            <p className="text-xs text-muted-foreground text-center">Quick select</p>
+            <div className="flex flex-wrap justify-center gap-2">
+              {presetCounts.map((count) => (
+                <Button
+                  key={count}
+                  variant={guestCount === count ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setGuestCount(count)}
+                  className={guestCount === count ? "bg-indoor-events hover:bg-indoor-events/90" : ""}
+                >
+                  {count}
+                </Button>
+              ))}
+            </div>
+          </div>
+
+          <Button
+            className="w-full bg-indoor-events hover:bg-indoor-events/90"
+            onClick={handleGuestCountContinue}
+            disabled={guestCount < 1}
+          >
+            Continue
+          </Button>
+        </div>
+      </StepDialog>
+
+      {/* Food Selection Popup */}
+      <StepDialog
+        open={popupStep === 'food-selection'}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPopupStep(null);
             setBookingMode(null);
           }
         }}
