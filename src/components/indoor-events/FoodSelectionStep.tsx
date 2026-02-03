@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Minus, Leaf, UtensilsCrossed } from 'lucide-react';
+import { Plus, Minus, Leaf, UtensilsCrossed, Wand2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { SelectedFood } from '@/pages/IndoorEventsPlanner';
 import FoodQuantitySuggestionDialog from './FoodQuantitySuggestionDialog';
@@ -75,50 +75,74 @@ const FoodSelectionStep: React.FC<FoodSelectionStepProps> = ({
     return selectedFoods.find((f) => f.id === itemId)?.quantity || 0;
   };
 
-  // Show suggestion dialog when adding new item
+  // Manual add - just increment by 1
   const handleAddFood = (item: any) => {
     const existing = selectedFoods.find((f) => f.id === item.id);
     
     if (existing) {
-      // If already selected, just increment by 1
       onUpdateFoods(
         selectedFoods.map((f) =>
           f.id === item.id ? { ...f, quantity: f.quantity + 1 } : f
         )
       );
     } else {
-      // Show suggestion dialog for new items
-      setSuggestionItem({
-        id: item.id,
-        name: item.name,
-        price: item.price,
-        serves_persons: item.serves_persons,
-        category: item.food_categories?.name || 'Other',
-      });
-      setShowSuggestionDialog(true);
+      onUpdateFoods([
+        ...selectedFoods,
+        {
+          id: item.id,
+          name: item.name,
+          price: item.price,
+          quantity: 1,
+          category: item.food_categories?.name || 'Other',
+        },
+      ]);
     }
+  };
+
+  // Auto calculate button - shows suggestion dialog
+  const handleAutoCalculate = (item: any) => {
+    setSuggestionItem({
+      id: item.id,
+      name: item.name,
+      price: item.price,
+      serves_persons: item.serves_persons,
+      category: item.food_categories?.name || 'Other',
+    });
+    setShowSuggestionDialog(true);
   };
 
   // Accept suggested quantity
   const handleAcceptSuggestion = (quantity: number) => {
     if (!suggestionItem) return;
     
-    onUpdateFoods([
-      ...selectedFoods,
-      {
-        id: suggestionItem.id,
-        name: suggestionItem.name,
-        price: suggestionItem.price,
-        quantity: quantity,
-        category: suggestionItem.category,
-      },
-    ]);
+    const existing = selectedFoods.find((f) => f.id === suggestionItem.id);
+    
+    if (existing) {
+      // Update existing item with suggested quantity
+      onUpdateFoods(
+        selectedFoods.map((f) =>
+          f.id === suggestionItem.id ? { ...f, quantity } : f
+        )
+      );
+    } else {
+      // Add new item with suggested quantity
+      onUpdateFoods([
+        ...selectedFoods,
+        {
+          id: suggestionItem.id,
+          name: suggestionItem.name,
+          price: suggestionItem.price,
+          quantity: quantity,
+          category: suggestionItem.category,
+        },
+      ]);
+    }
     
     setShowSuggestionDialog(false);
     setSuggestionItem(null);
   };
 
-  // Cancel suggestion
+  // Cancel suggestion - close dialog, user can manually edit
   const handleCancelSuggestion = () => {
     setShowSuggestionDialog(false);
     setSuggestionItem(null);
@@ -245,39 +269,53 @@ const FoodSelectionStep: React.FC<FoodSelectionStepProps> = ({
                       </div>
 
                       {/* Add/Remove Controls */}
-                      {qty > 0 ? (
-                        <div className="flex items-center gap-2 bg-indoor-events/10 rounded-full p-1">
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="h-7 w-7 rounded-full"
-                            onClick={() => handleRemoveFood(item.id)}
-                          >
-                            <Minus className="h-4 w-4" />
-                          </Button>
-                          <span className="w-6 text-center text-sm font-medium">
-                            {qty}
-                          </span>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="h-7 w-7 rounded-full"
-                            onClick={() => handleAddFood(item)}
-                          >
-                            <Plus className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      ) : (
+                      <div className="flex items-center gap-2">
+                        {/* Auto Calculate Button */}
                         <Button
                           size="sm"
-                          variant="outline"
-                          className="border-indoor-events text-indoor-events hover:bg-indoor-events hover:text-white"
-                          onClick={() => handleAddFood(item)}
+                          variant="ghost"
+                          className="h-8 px-2 text-indoor-events hover:bg-indoor-events/10"
+                          onClick={() => handleAutoCalculate(item)}
+                          title="Auto calculate quantity"
                         >
-                          <Plus className="h-4 w-4 mr-1" />
-                          Add Dish
+                          <Wand2 className="h-4 w-4 mr-1" />
+                          Auto
                         </Button>
-                      )}
+
+                        {qty > 0 ? (
+                          <div className="flex items-center gap-2 bg-indoor-events/10 rounded-full p-1">
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-7 w-7 rounded-full"
+                              onClick={() => handleRemoveFood(item.id)}
+                            >
+                              <Minus className="h-4 w-4" />
+                            </Button>
+                            <span className="w-6 text-center text-sm font-medium">
+                              {qty}
+                            </span>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-7 w-7 rounded-full"
+                              onClick={() => handleAddFood(item)}
+                            >
+                              <Plus className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="border-indoor-events text-indoor-events hover:bg-indoor-events hover:text-white"
+                            onClick={() => handleAddFood(item)}
+                          >
+                            <Plus className="h-4 w-4 mr-1" />
+                            Add
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>

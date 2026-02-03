@@ -150,8 +150,7 @@ const FoodQuantitySuggestionDialog: React.FC<FoodQuantitySuggestionDialogProps> 
               className="flex-1"
               onClick={onCancel}
             >
-              <X className="h-4 w-4 mr-2" />
-              Cancel
+              Edit Manually
             </Button>
             <Button
               className="flex-1 bg-indoor-events hover:bg-indoor-events/90"
