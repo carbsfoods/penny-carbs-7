@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCookProfile, useCookOrders, useUpdateCookStatus, useUpdateCookAvailability, useCookEarnings, useCookOrderHistory, useCookSettlements } from '@/hooks/useCook';
+import { useCookNotifications } from '@/hooks/useCookNotifications';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -37,6 +38,7 @@ import {
 import { format } from 'date-fns';
 import type { CookStatus } from '@/types/cook';
 import DishRequestForm from '@/components/cook/DishRequestForm';
+import NewCookOrderAlert from '@/components/cook/NewCookOrderAlert';
 
 const statusConfig: Record<CookStatus, { label: string; color: string; icon: React.ReactNode }> = {
   pending: { label: 'New Order', color: 'bg-yellow-100 text-yellow-800', icon: <Clock className="h-4 w-4" /> },
@@ -57,6 +59,7 @@ const CookDashboard: React.FC = () => {
   const { data: settlements, isLoading: settlementsLoading } = useCookSettlements();
   const updateStatus = useUpdateCookStatus();
   const updateAvailability = useUpdateCookAvailability();
+  const { pendingOrders: notificationOrders, showAlert, dismissAlert, removeOrder, ORDER_ACCEPT_CUTOFF_SECONDS } = useCookNotifications();
   const [activeTab, setActiveTab] = useState('active');
 
   // Calculate dish summary from order history
@@ -172,6 +175,22 @@ const CookDashboard: React.FC = () => {
           </Button>
         </div>
       </header>
+
+      <NewCookOrderAlert
+        open={showAlert}
+        orders={notificationOrders}
+        onAccept={(orderId) => {
+          handleStatusUpdate(orderId, 'accepted');
+          removeOrder(orderId);
+        }}
+        onReject={(orderId) => {
+          handleStatusUpdate(orderId, 'rejected');
+          removeOrder(orderId);
+        }}
+        onDismiss={dismissAlert}
+        isUpdating={updateStatus.isPending}
+        cutoffSeconds={ORDER_ACCEPT_CUTOFF_SECONDS}
+      />
 
       <main className="container px-4 py-4 space-y-4">
         {/* Availability Toggle */}
