@@ -59,10 +59,32 @@ const CloudKitchenOrder: React.FC = () => {
       return;
     }
 
-    // Navigate to checkout with cart data
-    toast({
-      title: 'Coming Soon',
-      description: 'Cloud kitchen checkout will be available soon',
+    if (!selectedDivision) {
+      toast({
+        title: 'Select a meal time',
+        description: 'Please select a meal slot first',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Check if ordering is still open
+    if (!selectedDivision.is_ordering_open) {
+      toast({
+        title: 'Slot Closed',
+        description: 'This meal slot is no longer accepting orders',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Navigate to cloud kitchen checkout with cart data
+    navigate('/cloud-kitchen/checkout', {
+      state: {
+        cartItems: cartItems,
+        division: selectedDivision,
+        totalAmount: totalAmount,
+      },
     });
   };
 

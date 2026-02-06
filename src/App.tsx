@@ -21,6 +21,7 @@ import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 import IndoorEventBooking from "./pages/IndoorEventBooking";
 import CloudKitchenOrder from "./pages/CloudKitchenOrder";
+import CloudKitchenCheckout from "./pages/CloudKitchenCheckout";
 import HomemadeOrder from "./pages/HomemadeOrder";
 
 // Indoor Events Pages
@@ -82,6 +83,7 @@ const App = () => (
                 
                 {/* Other Service Routes */}
                 <Route path="/cloud-kitchen" element={<CloudKitchenOrder />} />
+                <Route path="/cloud-kitchen/checkout" element={<CloudKitchenCheckout />} />
                 <Route path="/homemade" element={<HomemadeOrder />} />
                 <Route path="/menu/:serviceType" element={<Menu />} />
                 <Route path="/item/:itemId" element={<ItemDetail />} />
