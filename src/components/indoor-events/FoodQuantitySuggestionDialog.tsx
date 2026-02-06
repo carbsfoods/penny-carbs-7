@@ -45,7 +45,7 @@ const FoodQuantitySuggestionDialog: React.FC<FoodQuantitySuggestionDialogProps> 
 
   if (!item) return null;
 
-  const totalCost = item.price * quantity * guestCount;
+  const totalCost = item.price * quantity;
   const actualServings = quantity * servesPersons;
 
   return (
@@ -139,7 +139,7 @@ const FoodQuantitySuggestionDialog: React.FC<FoodQuantitySuggestionDialogProps> 
               ₹{totalCost.toLocaleString()}
             </p>
             <p className="text-xs text-muted-foreground">
-              {quantity} × ₹{item.price} × {guestCount} guests
+              {quantity} units × ₹{item.price}/unit
             </p>
           </div>
 
