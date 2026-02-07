@@ -296,52 +296,27 @@ export function useUpdateCookStatus() {
 
       if (error) throw error;
 
-      // When cook accepts, update the main order status to 'confirmed' 
-      // This makes it visible to delivery staff
-      if (status === 'accepted') {
-        await supabase
-          .from('orders')
-          .update({ 
-            status: 'confirmed',
-            cook_status: 'accepted',
-            cook_assignment_status: 'accepted',
-          })
-          .eq('id', orderId);
-      }
+      // Update the main orders table based on cook status change
+      type OrderStatus = 'pending' | 'confirmed' | 'preparing' | 'ready' | 'out_for_delivery' | 'delivered' | 'cancelled';
+      const orderUpdates: Record<string, { status: OrderStatus; cook_status: string; cook_assignment_status?: string }> = {
+        accepted: { status: 'confirmed', cook_status: 'accepted', cook_assignment_status: 'accepted' },
+        rejected: { status: 'cancelled', cook_status: 'rejected', cook_assignment_status: 'rejected' },
+        preparing: { status: 'preparing', cook_status: 'preparing' },
+        cooked: { status: 'ready', cook_status: 'ready' },
+      };
 
-      // When cook rejects, update order status so customer knows
-      if (status === 'rejected') {
-        await supabase
+      const updateData = orderUpdates[status];
+      if (updateData) {
+        const { error: orderError } = await supabase
           .from('orders')
-          .update({ 
-            status: 'cancelled',
-            cook_status: 'rejected',
-            cook_assignment_status: 'rejected',
-          })
+          .update(updateData)
           .eq('id', orderId);
-      }
 
-      // When cook marks as cooked/ready, update order status to 'ready'
-      // This indicates food is ready for pickup by delivery
-      if (status === 'cooked') {
-        await supabase
-          .from('orders')
-          .update({ 
-            status: 'ready',
-            cook_status: 'ready',
-          })
-          .eq('id', orderId);
-      }
-
-      // When cook is preparing
-      if (status === 'preparing') {
-        await supabase
-          .from('orders')
-          .update({ 
-            status: 'preparing',
-            cook_status: 'preparing',
-          })
-          .eq('id', orderId);
+        if (orderError) {
+          console.error('[CookStatus] Failed to update order:', orderError);
+          throw new Error(`Failed to update order status: ${orderError.message}`);
+        }
+        console.log('[CookStatus] Order updated successfully, status:', updateData.cook_status);
       }
     },
     onSuccess: () => {
