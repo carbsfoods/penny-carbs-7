@@ -726,6 +726,8 @@ export type Database = {
           min_order_sets: number | null
           name: string
           panchayat_id: string | null
+          platform_margin_type: string | null
+          platform_margin_value: number | null
           preparation_time_minutes: number | null
           price: number
           serves_persons: number | null
@@ -754,6 +756,8 @@ export type Database = {
           min_order_sets?: number | null
           name: string
           panchayat_id?: string | null
+          platform_margin_type?: string | null
+          platform_margin_value?: number | null
           preparation_time_minutes?: number | null
           price: number
           serves_persons?: number | null
@@ -782,6 +786,8 @@ export type Database = {
           min_order_sets?: number | null
           name?: string
           panchayat_id?: string | null
+          platform_margin_type?: string | null
+          platform_margin_value?: number | null
           preparation_time_minutes?: number | null
           price?: number
           serves_persons?: number | null

@@ -34,7 +34,8 @@ import {
   Trash2,
   Leaf,
   Star,
-  Percent
+  Percent,
+  Building2
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import AdminNavbar from '@/components/admin/AdminNavbar';
@@ -77,6 +78,8 @@ const AdminItems: React.FC = () => {
     discount_amount: '',
     is_featured: false,
     serves_persons: '',
+    platform_margin_type: 'percent' as 'percent' | 'fixed',
+    platform_margin_value: '',
   });
 
   const isAdmin = role === 'super_admin' || role === 'admin';
@@ -158,6 +161,8 @@ const AdminItems: React.FC = () => {
         discount_amount?: number;
         is_featured?: boolean;
         serves_persons?: number;
+        platform_margin_type?: string;
+        platform_margin_value?: number;
       };
       const serviceTypesArray = itemWithExtras.service_types?.length 
         ? itemWithExtras.service_types 
@@ -178,6 +183,8 @@ const AdminItems: React.FC = () => {
         discount_amount: itemWithExtras.discount_amount?.toString() || '',
         is_featured: itemWithExtras.is_featured ?? false,
         serves_persons: itemWithExtras.serves_persons?.toString() || '',
+        platform_margin_type: (itemWithExtras.platform_margin_type as 'percent' | 'fixed') || 'percent',
+        platform_margin_value: itemWithExtras.platform_margin_value?.toString() || '',
       });
     } else {
       setEditingItem(null);
@@ -198,6 +205,8 @@ const AdminItems: React.FC = () => {
         discount_amount: '',
         is_featured: false,
         serves_persons: '',
+        platform_margin_type: 'percent',
+        platform_margin_value: '',
       });
     }
     setIsDialogOpen(true);
@@ -241,6 +250,8 @@ const AdminItems: React.FC = () => {
         discount_amount: formData.discount_amount ? parseFloat(formData.discount_amount) : 0,
         is_featured: formData.is_featured,
         serves_persons: formData.serves_persons ? parseInt(formData.serves_persons) : null,
+        platform_margin_type: formData.platform_margin_type,
+        platform_margin_value: formData.platform_margin_value ? parseFloat(formData.platform_margin_value) : 0,
       };
 
       if (editingItem) {
@@ -437,10 +448,18 @@ const AdminItems: React.FC = () => {
                           <Star className="h-4 w-4 text-yellow-500 fill-yellow-500 flex-shrink-0" />
                         )}
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <p className="text-sm text-muted-foreground">
                           ₹{item.price}
                         </p>
+                        {((item as any).platform_margin_value > 0) && (
+                          <Badge variant="outline" className="text-xs bg-primary/5 border-primary/30 text-primary">
+                            <Building2 className="h-3 w-3 mr-0.5" />
+                            {(item as any).platform_margin_type === 'percent' 
+                              ? `+${(item as any).platform_margin_value}%` 
+                              : `+₹${(item as any).platform_margin_value}`}
+                          </Badge>
+                        )}
                         {((item as any).discount_percent > 0 || (item as any).discount_amount > 0) && (
                           <Badge variant="destructive" className="text-xs">
                             <Percent className="h-3 w-3 mr-0.5" />
@@ -731,6 +750,76 @@ const AdminItems: React.FC = () => {
                   onCheckedChange={(v) => setFormData({ ...formData, is_featured: v })}
                 />
               </div>
+            </div>
+
+            {/* Platform Margin Section */}
+            <div className="rounded-lg border border-dashed border-primary/30 bg-primary/5 p-4 space-y-4">
+              <div className="flex items-center gap-2">
+                <Building2 className="h-4 w-4 text-primary" />
+                <div>
+                  <Label className="text-sm font-medium">Platform Margin</Label>
+                  <p className="text-xs text-muted-foreground">Platform charge added to item price (not shown to cook)</p>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Margin Type</Label>
+                  <Select 
+                    value={formData.platform_margin_type} 
+                    onValueChange={(v) => setFormData({ ...formData, platform_margin_type: v as 'percent' | 'fixed' })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-popover">
+                      <SelectItem value="percent">Percentage (%)</SelectItem>
+                      <SelectItem value="fixed">Fixed Amount (₹)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="platform_margin_value">
+                    {formData.platform_margin_type === 'percent' ? 'Margin %' : 'Margin ₹'}
+                  </Label>
+                  <Input
+                    id="platform_margin_value"
+                    type="number"
+                    min="0"
+                    max={formData.platform_margin_type === 'percent' ? '100' : undefined}
+                    value={formData.platform_margin_value}
+                    onChange={(e) => setFormData({ ...formData, platform_margin_value: e.target.value })}
+                    placeholder="0"
+                  />
+                </div>
+              </div>
+
+              {formData.price && parseFloat(formData.platform_margin_value || '0') > 0 && (
+                <div className="rounded-md bg-muted p-3 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Cook receives:</span>
+                    <span className="font-medium">₹{parseFloat(formData.price).toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Platform margin:</span>
+                    <span className="font-medium text-primary">
+                      +₹{formData.platform_margin_type === 'percent' 
+                        ? (parseFloat(formData.price) * parseFloat(formData.platform_margin_value) / 100).toFixed(2)
+                        : parseFloat(formData.platform_margin_value).toLocaleString()
+                      }
+                    </span>
+                  </div>
+                  <div className="flex justify-between border-t border-border pt-2 mt-2">
+                    <span className="font-medium">Customer pays:</span>
+                    <span className="font-bold text-success">
+                      ₹{(parseFloat(formData.price) + (formData.platform_margin_type === 'percent' 
+                        ? (parseFloat(formData.price) * parseFloat(formData.platform_margin_value) / 100)
+                        : parseFloat(formData.platform_margin_value)
+                      )).toLocaleString()}
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="flex items-center justify-between">

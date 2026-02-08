@@ -14,15 +14,18 @@ import {
   FileSpreadsheet, 
   BarChart3,
   Calendar as CalendarIcon,
-  Settings
+  Settings,
+  TrendingUp,
+  Building2
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useSalesReport, useCookPerformanceReport, useDeliverySettlementReport, useReferralReport, usePanchayats } from '@/hooks/useReports';
+import { useProfitLossReport } from '@/hooks/useProfitLoss';
 import { exportToCSV, exportToExcel } from '@/lib/exportUtils';
 import { ReportFilters } from '@/types/reports';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
-import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, CartesianGrid, Legend } from 'recharts';
 
 const AdminReports: React.FC = () => {
   const navigate = useNavigate();
@@ -41,6 +44,7 @@ const AdminReports: React.FC = () => {
   const { data: cookData, isLoading: cookLoading } = useCookPerformanceReport(filters);
   const { data: deliveryData, isLoading: deliveryLoading } = useDeliverySettlementReport();
   const { data: referralData, isLoading: referralLoading } = useReferralReport();
+  const { data: profitLossData, isLoading: profitLossLoading } = useProfitLossReport(filters);
 
   // Process sales data for display
   const salesSummary = useMemo(() => {
@@ -191,13 +195,145 @@ const AdminReports: React.FC = () => {
           </Card>
         </div>
 
-        <Tabs defaultValue="sales" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-4">
+        <Tabs defaultValue="pnl" className="space-y-4">
+          <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="pnl">P&L</TabsTrigger>
             <TabsTrigger value="sales">Sales</TabsTrigger>
             <TabsTrigger value="cook">Cook</TabsTrigger>
             <TabsTrigger value="delivery">Delivery</TabsTrigger>
             <TabsTrigger value="referral">Referral</TabsTrigger>
           </TabsList>
+
+          {/* Profit & Loss Tab */}
+          <TabsContent value="pnl" className="space-y-4">
+            {/* P&L Summary Cards */}
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+              <Card>
+                <CardContent className="p-4 text-center">
+                  <p className="text-xl font-bold text-primary">₹{profitLossData?.summary.totalRevenue?.toLocaleString() || 0}</p>
+                  <p className="text-xs text-muted-foreground">Total Revenue</p>
+                </CardContent>
+              </Card>
+              <Card className="bg-primary/5 border-primary/20">
+                <CardContent className="p-4 text-center">
+                  <p className="text-xl font-bold text-primary">₹{profitLossData?.summary.platformMarginRevenue?.toLocaleString() || 0}</p>
+                  <p className="text-xs text-muted-foreground">Platform Margin</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4 text-center">
+                  <p className="text-xl font-bold text-warning">₹{profitLossData?.summary.cookPayouts?.toLocaleString() || 0}</p>
+                  <p className="text-xs text-muted-foreground">Cook Payouts</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4 text-center">
+                  <p className="text-xl font-bold text-muted-foreground">₹{profitLossData?.summary.deliveryPayouts?.toLocaleString() || 0}</p>
+                  <p className="text-xs text-muted-foreground">Delivery Payouts</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4 text-center">
+                  <p className="text-xl font-bold text-destructive">₹{profitLossData?.summary.referralCommissions?.toLocaleString() || 0}</p>
+                  <p className="text-xs text-muted-foreground">Referral Commissions</p>
+                </CardContent>
+              </Card>
+              <Card className="bg-success/10 border-success/30">
+                <CardContent className="p-4 text-center">
+                  <p className="text-xl font-bold text-success">₹{profitLossData?.summary.netProfit?.toLocaleString() || 0}</p>
+                  <p className="text-xs text-muted-foreground">Net Profit</p>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* P&L by Service Type */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <Building2 className="h-5 w-5" />
+                  Revenue by Service Type
+                </CardTitle>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" onClick={() => profitLossData?.byService && exportToCSV(profitLossData.byService as unknown as Record<string, unknown>[], 'pnl-by-service')}>
+                    <Download className="mr-2 h-4 w-4" />CSV
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => profitLossData?.byService && exportToExcel(profitLossData.byService as unknown as Record<string, unknown>[], 'pnl-by-service')}>
+                    <FileSpreadsheet className="mr-2 h-4 w-4" />Excel
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {profitLossLoading ? (
+                  <p className="text-center text-muted-foreground">Loading...</p>
+                ) : profitLossData?.byService && profitLossData.byService.length > 0 ? (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Service Type</TableHead>
+                        <TableHead className="text-right">Orders</TableHead>
+                        <TableHead className="text-right">Total Revenue</TableHead>
+                        <TableHead className="text-right">Platform Margin</TableHead>
+                        <TableHead className="text-right">Cook Payouts</TableHead>
+                        <TableHead className="text-right">Margin %</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {profitLossData.byService.map((row) => (
+                        <TableRow key={row.service_type}>
+                          <TableCell className="capitalize">{row.service_type.replace('_', ' ')}</TableCell>
+                          <TableCell className="text-right">{row.order_count}</TableCell>
+                          <TableCell className="text-right">₹{row.total_revenue.toLocaleString()}</TableCell>
+                          <TableCell className="text-right text-primary font-medium">₹{row.platform_margin.toLocaleString()}</TableCell>
+                          <TableCell className="text-right">₹{row.cook_payouts.toLocaleString()}</TableCell>
+                          <TableCell className="text-right text-success">
+                            {row.total_revenue > 0 ? ((row.platform_margin / row.total_revenue) * 100).toFixed(1) : 0}%
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                ) : (
+                  <p className="text-center text-muted-foreground">No data available</p>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* P&L Trend Chart */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <TrendingUp className="h-5 w-5" />
+                  Daily Profit Trend
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {profitLossLoading ? (
+                  <p className="text-center text-muted-foreground">Loading...</p>
+                ) : profitLossData?.byDate && profitLossData.byDate.length > 0 ? (
+                  <div className="h-72">
+                    <ChartContainer config={{
+                      revenue: { label: 'Revenue', color: 'hsl(var(--primary))' },
+                      margin: { label: 'Platform Margin', color: 'hsl(var(--success))' },
+                    }}>
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={profitLossData.byDate}>
+                          <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                          <XAxis dataKey="date" fontSize={12} tickFormatter={(v) => new Date(v).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })} />
+                          <YAxis fontSize={12} tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`} />
+                          <ChartTooltip content={<ChartTooltipContent />} />
+                          <Legend />
+                          <Line type="monotone" dataKey="total_revenue" name="Revenue" stroke="var(--color-revenue)" strokeWidth={2} dot={false} />
+                          <Line type="monotone" dataKey="platform_margin" name="Platform Margin" stroke="var(--color-margin)" strokeWidth={2} dot={false} />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </ChartContainer>
+                  </div>
+                ) : (
+                  <p className="text-center text-muted-foreground">No data available</p>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
 
           <TabsContent value="sales" className="space-y-4">
             <Card>

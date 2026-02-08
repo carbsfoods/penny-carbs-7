@@ -14,6 +14,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ArrowLeft, Plus, Clock, Search, Leaf, Filter } from 'lucide-react';
 import CartButton from '@/components/customer/CartButton';
 import BottomNav from '@/components/customer/BottomNav';
+import { calculatePlatformMargin } from '@/lib/priceUtils';
+
+// Helper to calculate customer display price
+const getCustomerPrice = (item: FoodItemWithImages): number => {
+  const itemWithMargin = item as FoodItemWithImages & { platform_margin_type?: string; platform_margin_value?: number };
+  const marginType = (itemWithMargin.platform_margin_type || 'percent') as 'percent' | 'fixed';
+  const marginValue = itemWithMargin.platform_margin_value || 0;
+  const margin = calculatePlatformMargin(item.price, marginType, marginValue);
+  return item.price + margin;
+};
 
 const serviceTypeLabels: Record<ServiceType, { title: string; emoji: string }> = {
   indoor_events: { title: 'Indoor Events', emoji: '🎉' },
@@ -222,7 +232,7 @@ const Menu: React.FC = () => {
                       </div>
                     )}
                     <div className="mt-3 flex items-center justify-between">
-                      <span className="text-lg font-bold">₹{item.price.toFixed(0)}</span>
+                      <span className="text-lg font-bold">₹{getCustomerPrice(item).toFixed(0)}</span>
                       <Button
                         size="sm"
                         variant="outline"

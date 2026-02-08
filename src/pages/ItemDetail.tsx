@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useCart } from '@/contexts/CartContext';
@@ -14,6 +14,7 @@ import {
   CarouselPrevious,
 } from '@/components/ui/carousel';
 import { ArrowLeft, Plus, Minus, Clock, Leaf, ShoppingCart, CalendarHeart } from 'lucide-react';
+import { calculatePlatformMargin } from '@/lib/priceUtils';
 
 const ItemDetail: React.FC = () => {
   const { itemId } = useParams<{ itemId: string }>();
@@ -53,6 +54,16 @@ const ItemDetail: React.FC = () => {
 
     fetchItem();
   }, [itemId]);
+
+  // Calculate customer price with platform margin
+  const customerPrice = useMemo(() => {
+    if (!item) return 0;
+    const itemWithMargin = item as FoodItemWithImages & { platform_margin_type?: string; platform_margin_value?: number };
+    const marginType = (itemWithMargin.platform_margin_type || 'percent') as 'percent' | 'fixed';
+    const marginValue = itemWithMargin.platform_margin_value || 0;
+    const margin = calculatePlatformMargin(item.price, marginType, marginValue);
+    return item.price + margin;
+  }, [item]);
 
   const handleAddToCart = async () => {
     if (!item) return;
@@ -176,7 +187,7 @@ const ItemDetail: React.FC = () => {
 
         <div className="mt-6">
           <span className="text-3xl font-bold text-foreground">
-            ₹{item.price.toFixed(0)}
+            ₹{customerPrice.toFixed(0)}
           </span>
           {isIndoorEvents && (
             <span className="ml-2 text-sm text-muted-foreground">per plate</span>
@@ -264,7 +275,7 @@ const ItemDetail: React.FC = () => {
               </Button>
             </div>
             <Button className="flex-1 h-12 text-base" onClick={handleAddToCart}>
-              Add to Cart - ₹{(item.price * quantity).toFixed(0)}
+              Add to Cart - ₹{(customerPrice * quantity).toFixed(0)}
             </Button>
           </div>
         )}
