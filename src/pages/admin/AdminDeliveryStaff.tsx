@@ -26,6 +26,7 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import type { DeliveryStaff } from '@/types/delivery';
 import DeliveryStaffWalletTab from '@/components/admin/delivery/DeliveryStaffWalletTab';
+import DeliveryRulesTab from '@/components/admin/delivery/DeliveryRulesTab';
 
 const vehicleIcons: Record<string, React.ReactNode> = {
   bicycle: <Bike className="h-4 w-4" />,
@@ -919,7 +920,7 @@ const AdminDeliveryStaff: React.FC = () => {
 
       <main className="container px-4 py-4">
         <Tabs defaultValue="pending" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="pending" className="relative">
               Pending
               {pendingStaff && pendingStaff.length > 0 && (
@@ -932,6 +933,10 @@ const AdminDeliveryStaff: React.FC = () => {
             <TabsTrigger value="wallet" className="gap-1">
               <Wallet className="h-4 w-4" />
               Wallet
+            </TabsTrigger>
+            <TabsTrigger value="rules" className="gap-1">
+              <Truck className="h-4 w-4" />
+              Rules
             </TabsTrigger>
           </TabsList>
 
@@ -967,6 +972,10 @@ const AdminDeliveryStaff: React.FC = () => {
 
           <TabsContent value="wallet">
             <DeliveryStaffWalletTab />
+          </TabsContent>
+
+          <TabsContent value="rules">
+            <DeliveryRulesTab />
           </TabsContent>
         </Tabs>
       </main>

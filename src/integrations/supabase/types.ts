@@ -534,6 +534,45 @@ export type Database = {
         }
         Relationships: []
       }
+      delivery_rules: {
+        Row: {
+          created_at: string
+          free_delivery_above: number | null
+          id: string
+          is_active: boolean
+          max_delivery_charge: number | null
+          min_delivery_charge: number
+          per_km_charge: number | null
+          rule_name: string
+          service_type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          free_delivery_above?: number | null
+          id?: string
+          is_active?: boolean
+          max_delivery_charge?: number | null
+          min_delivery_charge?: number
+          per_km_charge?: number | null
+          rule_name: string
+          service_type: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          free_delivery_above?: number | null
+          id?: string
+          is_active?: boolean
+          max_delivery_charge?: number | null
+          min_delivery_charge?: number
+          per_km_charge?: number | null
+          rule_name?: string
+          service_type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       delivery_staff: {
         Row: {
           approved_at: string | null
