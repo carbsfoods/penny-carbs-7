@@ -154,17 +154,11 @@ const Checkout: React.FC = () => {
 
       // For homemade orders, assign cooks based on customer selection from cart
       if (isHomemade) {
-        // Get cart items with selected cooks
-        const { data: cartWithCooks } = await supabase
-          .from('cart_items')
-          .select('food_item_id, selected_cook_id')
-          .eq('user_id', user.id);
-
-        // Map of food_item_id -> selected_cook_id from cart
+        // Use cart items from context which already have selected_cook_id
         const cartCookMap = new Map<string, string>();
-        (cartWithCooks || []).forEach((ci: any) => {
-          if (ci.selected_cook_id) {
-            cartCookMap.set(ci.food_item_id, ci.selected_cook_id);
+        items.forEach((item) => {
+          if (item.selected_cook_id) {
+            cartCookMap.set(item.food_item_id, item.selected_cook_id);
           }
         });
 
