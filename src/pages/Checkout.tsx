@@ -152,38 +152,73 @@ const Checkout: React.FC = () => {
 
       if (itemsError) throw itemsError;
 
-      // For homemade orders, assign cooks who have these dishes allocated
+      // For homemade orders, assign cooks based on customer selection from cart
       if (isHomemade) {
-        const foodItemIds = items.map(item => item.food_item_id);
-        const { data: cookDishes } = await supabase
-          .from('cook_dishes')
-          .select('cook_id, food_item_id')
-          .in('food_item_id', foodItemIds);
+        // Get cart items with selected cooks
+        const { data: cartWithCooks } = await supabase
+          .from('cart_items')
+          .select('food_item_id, selected_cook_id')
+          .eq('user_id', user.id);
 
-        if (cookDishes && cookDishes.length > 0) {
-          // Get unique cook IDs
-          const uniqueCookIds = [...new Set(cookDishes.map(cd => cd.cook_id))];
-
-          // Create cook assignments
-          for (const cookId of uniqueCookIds) {
-            await supabase
-              .from('order_assigned_cooks')
-              .insert({
-                order_id: order.id,
-                cook_id: cookId,
-                cook_status: 'pending',
-                assigned_at: new Date().toISOString(),
-              });
+        // Map of food_item_id -> selected_cook_id from cart
+        const cartCookMap = new Map<string, string>();
+        (cartWithCooks || []).forEach((ci: any) => {
+          if (ci.selected_cook_id) {
+            cartCookMap.set(ci.food_item_id, ci.selected_cook_id);
           }
+        });
 
-          // Update order items with assigned cook
-          for (const cd of cookDishes) {
-            await supabase
-              .from('order_items')
-              .update({ assigned_cook_id: cd.cook_id })
-              .eq('order_id', order.id)
-              .eq('food_item_id', cd.food_item_id);
-          }
+        // For items without a selected cook, fallback to cook_dishes allocation
+        const itemsNeedingCook = items.filter(item => !cartCookMap.has(item.food_item_id));
+        const foodItemIds = itemsNeedingCook.map(item => item.food_item_id);
+        
+        if (foodItemIds.length > 0) {
+          const { data: cookDishes } = await supabase
+            .from('cook_dishes')
+            .select('cook_id, food_item_id, cooks!inner(is_active, is_available)')
+            .in('food_item_id', foodItemIds);
+
+          // Pick first active+available cook for items without selection
+          (cookDishes || []).forEach((cd: any) => {
+            if (cd.cooks?.is_active && cd.cooks?.is_available && !cartCookMap.has(cd.food_item_id)) {
+              cartCookMap.set(cd.food_item_id, cd.cook_id);
+            }
+          });
+        }
+
+        // Get unique cook IDs to create assignments
+        const uniqueCookIds = [...new Set(cartCookMap.values())];
+
+        // Create cook assignments in order_assigned_cooks
+        for (const cookId of uniqueCookIds) {
+          await supabase
+            .from('order_assigned_cooks')
+            .insert({
+              order_id: order.id,
+              cook_id: cookId,
+              cook_status: 'pending',
+              assigned_at: new Date().toISOString(),
+            });
+        }
+
+        // Update order items with assigned cook
+        for (const [foodItemId, cookId] of cartCookMap.entries()) {
+          await supabase
+            .from('order_items')
+            .update({ assigned_cook_id: cookId })
+            .eq('order_id', order.id)
+            .eq('food_item_id', foodItemId);
+        }
+
+        // Update order with first cook as primary assigned (for backwards compatibility)
+        if (uniqueCookIds.length > 0) {
+          await supabase
+            .from('orders')
+            .update({ 
+              assigned_cook_id: uniqueCookIds[0],
+              cook_assignment_status: 'pending',
+            })
+            .eq('id', order.id);
         }
       }
 

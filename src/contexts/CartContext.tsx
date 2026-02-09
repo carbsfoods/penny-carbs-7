@@ -5,12 +5,16 @@ import type { CartItem, FoodItemWithImages } from '@/types/database';
 import { toast } from '@/hooks/use-toast';
 import { calculatePlatformMargin } from '@/lib/priceUtils';
 
+interface CartItemWithCook extends CartItem {
+  selected_cook_id?: string | null;
+}
+
 interface CartContextType {
-  items: CartItem[];
+  items: CartItemWithCook[];
   isLoading: boolean;
   itemCount: number;
   totalAmount: number;
-  addToCart: (foodItemId: string, quantity?: number) => Promise<void>;
+  addToCart: (foodItemId: string, quantity?: number, selectedCookId?: string | null) => Promise<void>;
   updateQuantity: (cartItemId: string, quantity: number) => Promise<void>;
   removeFromCart: (cartItemId: string) => Promise<void>;
   clearCart: () => Promise<void>;
@@ -29,7 +33,7 @@ export const useCart = () => {
 
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
-  const [items, setItems] = useState<CartItem[]>([]);
+  const [items, setItems] = useState<CartItemWithCook[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   const fetchCart = async () => {
@@ -56,7 +60,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return;
       }
 
-      const cartItems: CartItem[] = (data || []).map(item => ({
+      const cartItems: CartItemWithCook[] = (data || []).map(item => ({
         id: item.id,
         user_id: item.user_id,
         food_item_id: item.food_item_id,
@@ -64,6 +68,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         created_at: item.created_at,
         updated_at: item.updated_at,
         food_item: item.food_item as FoodItemWithImages,
+        selected_cook_id: item.selected_cook_id,
       }));
 
       setItems(cartItems);
@@ -78,7 +83,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     fetchCart();
   }, [user]);
 
-  const addToCart = async (foodItemId: string, quantity = 1) => {
+  const addToCart = async (foodItemId: string, quantity = 1, selectedCookId?: string | null) => {
     if (!user) {
       toast({
         title: "Please log in",
@@ -93,16 +98,32 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const existingItem = items.find(item => item.food_item_id === foodItemId);
 
       if (existingItem) {
-        // Update quantity
-        await updateQuantity(existingItem.id, existingItem.quantity + quantity);
+        // Update quantity and cook selection if provided
+        const { error } = await supabase
+          .from('cart_items')
+          .update({ 
+            quantity: existingItem.quantity + quantity,
+            ...(selectedCookId !== undefined && { selected_cook_id: selectedCookId }),
+          })
+          .eq('id', existingItem.id);
+
+        if (error) throw error;
+
+        toast({
+          title: "Updated cart",
+          description: "Item quantity updated",
+        });
+
+        await fetchCart();
       } else {
-        // Insert new item
+        // Insert new item with selected cook
         const { error } = await supabase
           .from('cart_items')
           .insert({
             user_id: user.id,
             food_item_id: foodItemId,
             quantity,
+            selected_cook_id: selectedCookId || null,
           });
 
         if (error) {

@@ -100,7 +100,8 @@ const ItemDetail: React.FC = () => {
 
   const handleAddToCart = async () => {
     if (!item) return;
-    await addToCart(item.id, quantity);
+    // For homemade items, pass the selected cook
+    await addToCart(item.id, quantity, selectedCookId);
     navigate(-1);
   };
 

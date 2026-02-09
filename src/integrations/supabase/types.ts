@@ -104,6 +104,7 @@ export type Database = {
           food_item_id: string
           id: string
           quantity: number
+          selected_cook_id: string | null
           updated_at: string
           user_id: string
         }
@@ -112,6 +113,7 @@ export type Database = {
           food_item_id: string
           id?: string
           quantity?: number
+          selected_cook_id?: string | null
           updated_at?: string
           user_id: string
         }
@@ -120,6 +122,7 @@ export type Database = {
           food_item_id?: string
           id?: string
           quantity?: number
+          selected_cook_id?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -129,6 +132,13 @@ export type Database = {
             columns: ["food_item_id"]
             isOneToOne: false
             referencedRelation: "food_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cart_items_selected_cook_id_fkey"
+            columns: ["selected_cook_id"]
+            isOneToOne: false
+            referencedRelation: "cooks"
             referencedColumns: ["id"]
           },
         ]
