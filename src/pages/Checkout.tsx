@@ -188,16 +188,16 @@ const Checkout: React.FC = () => {
         const uniqueCookIds = [...new Set(cartCookMap.values())];
         console.log('[Checkout] Cook assignment - uniqueCookIds:', uniqueCookIds, 'cartCookMap:', Object.fromEntries(cartCookMap));
 
-        // Create cook assignments in order_assigned_cooks
+        // Create cook assignments in order_assigned_cooks (use upsert to avoid conflict with triggers)
         for (const cookId of uniqueCookIds) {
           const { error: assignError } = await supabase
             .from('order_assigned_cooks')
-            .insert({
+            .upsert({
               order_id: order.id,
               cook_id: cookId,
               cook_status: 'pending',
               assigned_at: new Date().toISOString(),
-            });
+            }, { onConflict: 'order_id,cook_id', ignoreDuplicates: true });
           
           if (assignError) {
             console.error('Error creating cook assignment:', assignError);

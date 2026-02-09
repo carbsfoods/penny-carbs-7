@@ -281,6 +281,7 @@ export function useUpdateDeliveryStatus() {
       if (status === 'delivered') {
         updateData.delivered_at = new Date().toISOString();
         updateData.status = 'delivered';
+        // Wallet updates are handled by the DB trigger `handle_order_delivered`
       }
 
       const { error } = await supabase
@@ -289,54 +290,6 @@ export function useUpdateDeliveryStatus() {
         .eq('id', orderId);
 
       if (error) throw error;
-
-      // Update wallet when order is delivered
-      if (status === 'delivered' && profile?.id) {
-        // Get current wallet
-        const { data: wallet } = await supabase
-          .from('delivery_wallets')
-          .select('*')
-          .eq('delivery_staff_id', profile.id)
-          .maybeSingle();
-
-        if (wallet) {
-          // Update wallet: collected_amount = order total, job_earnings = delivery charge
-          const newCollectedAmount = (wallet.collected_amount || 0) + (orderAmount || 0);
-          const newJobEarnings = (wallet.job_earnings || 0) + (deliveryCharge || 0);
-
-          await supabase
-            .from('delivery_wallets')
-            .update({
-              collected_amount: newCollectedAmount,
-              job_earnings: newJobEarnings,
-              updated_at: new Date().toISOString(),
-            })
-            .eq('delivery_staff_id', profile.id);
-
-          // Create wallet transactions for tracking
-          if (orderAmount && orderAmount > 0) {
-            await supabase.from('wallet_transactions').insert({
-              delivery_staff_id: profile.id,
-              order_id: orderId,
-              transaction_type: 'collection',
-              amount: orderAmount,
-              description: 'Order amount collected',
-              status: 'pending',
-            });
-          }
-
-          if (deliveryCharge && deliveryCharge > 0) {
-            await supabase.from('wallet_transactions').insert({
-              delivery_staff_id: profile.id,
-              order_id: orderId,
-              transaction_type: 'earning',
-              amount: deliveryCharge,
-              description: 'Delivery charge earned',
-              status: 'approved',
-            });
-          }
-        }
-      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['delivery-orders'] });
