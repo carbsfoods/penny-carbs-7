@@ -28,7 +28,9 @@ import {
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { MapPin, Search, User, ChevronDown, LogOut, ShoppingBag, Settings, Truck, Phone, Loader2, Wallet } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { useIsMobile } from '@/hooks/use-mobile';
 import logo from '@/assets/logo.png';
+import carbsLogo from '@/assets/carbs_logo.jpg';
 
 const mobileSchema = z.object({
   mobileNumber: z.string()
@@ -47,6 +49,7 @@ const AppHeader: React.FC<AppHeaderProps> = ({ onSearch }) => {
   const navigate = useNavigate();
   const { user, profile, signOut, role, customerSignIn } = useAuth();
   const { selectedPanchayat, selectedWardNumber, isLocationSet } = useLocation();
+  const isMobile = useIsMobile();
   
   const [searchQuery, setSearchQuery] = useState('');
   const [customerLoginOpen, setCustomerLoginOpen] = useState(false);
@@ -132,44 +135,79 @@ const AppHeader: React.FC<AppHeaderProps> = ({ onSearch }) => {
     <>
       <header className="sticky top-0 z-50 w-full border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
         <div className="container flex h-16 items-center gap-4 px-4">
-          {/* Logo */}
-          <img 
-            src={logo} 
-            alt="Penny Carbs" 
-            className="h-8 sm:h-10 w-auto cursor-pointer flex-shrink-0" 
-            onClick={() => navigate('/')}
-          />
-          {/* Location Display - strictly from profile */}
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => user ? navigate('/profile') : setCustomerLoginOpen(true)}
-              className="flex items-center gap-1 text-left"
-            >
-              <MapPin className="h-5 w-5 text-primary" />
-              <div className="hidden sm:block">
-                <p className="text-xs text-muted-foreground">Deliver to</p>
-                <p className="flex items-center text-sm font-medium">
-                  {locationDisplay}
-                  <ChevronDown className="ml-1 h-4 w-4" />
-                </p>
-              </div>
-              <ChevronDown className="h-4 w-4 sm:hidden" />
-            </button>
-            {!user && (
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => {
-                  setShowNotRegistered(false);
-                  mobileForm.reset();
-                  setCustomerLoginOpen(true);
-                }}
-                className="hidden sm:flex"
+          {/* Logo - mobile: carbs logo, desktop: original logo */}
+          {isMobile ? (
+            <img 
+              src={carbsLogo} 
+              alt="Penny Carbs" 
+              className="h-9 w-9 rounded-lg cursor-pointer flex-shrink-0" 
+              onClick={() => navigate('/')}
+            />
+          ) : (
+            <img 
+              src={logo} 
+              alt="Penny Carbs" 
+              className="h-10 w-auto cursor-pointer flex-shrink-0" 
+              onClick={() => navigate('/')}
+            />
+          )}
+
+          {/* Mobile: show Customer/Name instead of location */}
+          {isMobile ? (
+            <div className="flex items-center">
+              {user ? (
+                <button
+                  onClick={() => navigate('/profile')}
+                  className="text-sm font-semibold text-foreground truncate max-w-[100px]"
+                >
+                  {profile?.name || 'User'}
+                </button>
+              ) : (
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => {
+                    setShowNotRegistered(false);
+                    mobileForm.reset();
+                    setCustomerLoginOpen(true);
+                  }}
+                  className="text-sm font-medium px-2"
+                >
+                  Customer
+                </Button>
+              )}
+            </div>
+          ) : (
+            /* Desktop: Location Display */
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => user ? navigate('/profile') : setCustomerLoginOpen(true)}
+                className="flex items-center gap-1 text-left"
               >
-                Customer
-              </Button>
-            )}
-          </div>
+                <MapPin className="h-5 w-5 text-primary" />
+                <div>
+                  <p className="text-xs text-muted-foreground">Deliver to</p>
+                  <p className="flex items-center text-sm font-medium">
+                    {locationDisplay}
+                    <ChevronDown className="ml-1 h-4 w-4" />
+                  </p>
+                </div>
+              </button>
+              {!user && (
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => {
+                    setShowNotRegistered(false);
+                    mobileForm.reset();
+                    setCustomerLoginOpen(true);
+                  }}
+                >
+                  Customer
+                </Button>
+              )}
+            </div>
+          )}
 
           {/* Search Bar */}
           <form onSubmit={handleSearch} className="flex-1">
