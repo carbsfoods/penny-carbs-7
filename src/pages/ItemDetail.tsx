@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/carousel';
 import { ArrowLeft, Plus, Minus, Clock, Leaf, ShoppingCart, CalendarHeart } from 'lucide-react';
 import { calculatePlatformMargin } from '@/lib/priceUtils';
+import CookSelector, { type CookOption } from '@/components/customer/CookSelector';
 
 const ItemDetail: React.FC = () => {
   const { itemId } = useParams<{ itemId: string }>();
@@ -24,6 +25,8 @@ const ItemDetail: React.FC = () => {
   const [item, setItem] = useState<FoodItemWithImages | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
+  const [availableCooks, setAvailableCooks] = useState<CookOption[]>([]);
+  const [selectedCookId, setSelectedCookId] = useState<string | null>(null);
 
   const cartItem = cartItems.find(ci => ci.food_item_id === itemId);
   const currentCartQuantity = cartItem?.quantity || 0;
@@ -45,6 +48,36 @@ const ItemDetail: React.FC = () => {
 
         if (error) throw error;
         setItem(data as FoodItemWithImages);
+
+        // For homemade items, fetch available cooks
+        const serviceTypes = (data as any).service_types || [];
+        const isHomemade = data.service_type === 'homemade' || serviceTypes.includes('homemade');
+        
+        if (isHomemade) {
+          const { data: cookDishes, error: cooksError } = await supabase
+            .from('cook_dishes')
+            .select(`
+              cook_id,
+              cooks!inner(id, kitchen_name, rating, total_orders, is_active, is_available)
+            `)
+            .eq('food_item_id', itemId);
+
+          if (!cooksError && cookDishes) {
+            const activeCooks = cookDishes
+              .filter((cd: any) => cd.cooks?.is_active && cd.cooks?.is_available)
+              .map((cd: any) => ({
+                cook_id: cd.cook_id,
+                kitchen_name: cd.cooks.kitchen_name,
+                rating: cd.cooks.rating,
+                total_orders: cd.cooks.total_orders,
+              }));
+            setAvailableCooks(activeCooks);
+            // Auto-select the first cook if there's only one
+            if (activeCooks.length === 1) {
+              setSelectedCookId(activeCooks[0].cook_id);
+            }
+          }
+        }
       } catch (error) {
         console.error('Error fetching item:', error);
       } finally {
@@ -108,6 +141,11 @@ const ItemDetail: React.FC = () => {
   }) || [];
 
   const isIndoorEvents = item.service_type === 'indoor_events';
+  const serviceTypes = (item as any).service_types || [];
+  const isHomemade = item.service_type === 'homemade' || serviceTypes.includes('homemade');
+  
+  // For homemade items with multiple cooks, require cook selection
+  const needsCookSelection = isHomemade && availableCooks.length > 1 && !selectedCookId;
 
   return (
     <div className="min-h-screen bg-background pb-24">
@@ -193,6 +231,15 @@ const ItemDetail: React.FC = () => {
             <span className="ml-2 text-sm text-muted-foreground">per plate</span>
           )}
         </div>
+
+        {/* Cook Selection for Homemade items */}
+        {isHomemade && availableCooks.length > 0 && (
+          <CookSelector
+            cooks={availableCooks}
+            selectedCookId={selectedCookId}
+            onSelectCook={setSelectedCookId}
+          />
+        )}
 
         {/* Indoor Events Notice */}
         {isIndoorEvents && (
