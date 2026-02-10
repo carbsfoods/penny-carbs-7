@@ -110,14 +110,6 @@ const IndoorEvents: React.FC = () => {
       </header>
 
       <main className="container px-4 py-6">
-        {/* Event Type Selection - Default Shown */}
-        <div className="mb-6">
-          <EventTypeSelector
-            selectedEventType={selectedEventType}
-            onSelect={setSelectedEventType}
-          />
-        </div>
-
         {/* Referral Section */}
         <div className="mb-6">
           {!showReferral ? (
@@ -186,14 +178,7 @@ const IndoorEvents: React.FC = () => {
           </div>
 
           {/* Plan & Estimate Card */}
-          <div 
-            className={`relative overflow-hidden rounded-2xl bg-gradient-to-br from-violet-500 via-purple-600 to-indigo-700 p-6 transition-all ${
-              selectedEventType 
-                ? 'cursor-pointer hover:scale-[1.02] hover:shadow-xl active:scale-[0.98]' 
-                : 'opacity-60 cursor-not-allowed'
-            }`}
-            onClick={() => selectedEventType && handleBookingClick('planner')}
-          >
+          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-violet-500 via-purple-600 to-indigo-700 p-6 transition-all">
             <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2" />
             <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/10 rounded-full translate-y-1/2 -translate-x-1/2" />
             
@@ -204,7 +189,7 @@ const IndoorEvents: React.FC = () => {
               </span>
             </div>
             
-            <div className="relative z-10 flex items-center gap-4">
+            <div className="relative z-10 flex items-center gap-4 mb-4">
               <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-sm">
                 <Calculator className="h-7 w-7 text-white" />
               </div>
@@ -215,15 +200,27 @@ const IndoorEvents: React.FC = () => {
                 </p>
               </div>
             </div>
+
+            {/* Event Type Selector inside card */}
+            <div className="relative z-10 bg-white/10 backdrop-blur-sm rounded-xl p-4">
+              <p className="text-white/90 text-sm font-medium mb-3">
+                Select Event Type (ഏതു തരം പരിപാടിയാണെന്ന് തിരഞ്ഞെടുക്കൂ)
+              </p>
+              <EventTypeSelector
+                selectedEventType={selectedEventType}
+                onSelect={setSelectedEventType}
+              />
+              {selectedEventType && (
+                <Button
+                  className="w-full mt-4 bg-white text-purple-700 hover:bg-white/90 font-semibold"
+                  onClick={() => handleBookingClick('planner')}
+                >
+                  Continue with {selectedEventType.name}
+                </Button>
+              )}
+            </div>
           </div>
         </div>
-
-        {/* Hint Text */}
-        {!selectedEventType && (
-          <p className="text-center text-sm text-muted-foreground mt-6">
-            Please select an event type above to continue
-          </p>
-        )}
 
         {/* Info Text */}
         <p className="text-center text-sm text-muted-foreground mt-8">
