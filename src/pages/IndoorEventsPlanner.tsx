@@ -372,7 +372,7 @@ ${plannerData.eventDetails || 'None'}
         sessionStorage.removeItem('indoor_event_referral');
       }
 
-      const { error } = await supabase.from('orders').insert({
+      const { data: orderData, error } = await supabase.from('orders').insert({
         order_number: orderNumber,
         customer_id: user.id,
         service_type: 'indoor_events',
@@ -387,9 +387,27 @@ ${plannerData.eventDetails || 'None'}
         order_type: 'full_event',
         total_amount: totals.grandTotal,
         referred_by: referredBy,
-      });
+      })
+        .select('id')
+        .single();
 
       if (error) throw error;
+
+      // Insert order items for selected foods
+      if (plannerData.selectedFoods.length > 0 && orderData) {
+        const orderItems = plannerData.selectedFoods.map((food) => ({
+          order_id: orderData.id,
+          food_item_id: food.id,
+          quantity: food.quantity,
+          unit_price: food.price,
+          total_price: food.price * food.quantity,
+        }));
+
+        const { error: itemsError } = await supabase.from('order_items').insert(orderItems);
+        if (itemsError) {
+          console.error('Error inserting order items:', itemsError);
+        }
+      }
 
       setIsSubmitted(true);
       setActiveDialog(null);
