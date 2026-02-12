@@ -13,6 +13,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Plus, Star, Percent } from 'lucide-react';
 import { calculatePlatformMargin } from '@/lib/priceUtils';
 import { useCookAllocatedItemIds } from '@/hooks/useCookAllocatedItems';
+import { useLowestCookPrices } from '@/hooks/useLowestCookPrices';
 
 interface FeaturedItem {
   id: string;
@@ -28,12 +29,21 @@ interface FeaturedItem {
   images: { image_url: string; is_primary: boolean }[];
 }
 
-// Helper to calculate customer display price (base + margin)
-const getCustomerPrice = (item: FeaturedItem): number => {
+// Helper to calculate customer display price (base + margin), using lowest cook price for homemade
+const getCustomerPrice = (item: FeaturedItem, lowestCookPrices?: Map<string, number | null>): number => {
   const marginType = (item.platform_margin_type || 'percent') as 'percent' | 'fixed';
   const marginValue = item.platform_margin_value || 0;
-  const margin = calculatePlatformMargin(item.price, marginType, marginValue);
-  return item.price + margin;
+  
+  let basePrice = item.price;
+  if (item.service_type === 'homemade' && lowestCookPrices) {
+    const lowestPrice = lowestCookPrices.get(item.id);
+    if (lowestPrice !== undefined && lowestPrice !== null) {
+      basePrice = Math.min(basePrice, lowestPrice);
+    }
+  }
+  
+  const margin = calculatePlatformMargin(basePrice, marginType, marginValue);
+  return basePrice + margin;
 };
 
 const FeaturedItems: React.FC = () => {
@@ -42,6 +52,7 @@ const FeaturedItems: React.FC = () => {
   const { selectedPanchayat } = useLocation();
   const { requireAuth, showLoginDialog, setShowLoginDialog, onLoginSuccess } = useAuthCheck();
   const { data: allocatedIds } = useCookAllocatedItemIds();
+  const { lowestCookPrices } = useLowestCookPrices();
 
   const { data: rawItems, isLoading } = useQuery({
     queryKey: ['featured-items', selectedPanchayat?.id],
@@ -103,7 +114,7 @@ const FeaturedItems: React.FC = () => {
   };
 
   const getDiscountedPrice = (item: FeaturedItem) => {
-    const customerPrice = getCustomerPrice(item);
+    const customerPrice = getCustomerPrice(item, lowestCookPrices);
     if (item.discount_percent && item.discount_percent > 0) {
       return customerPrice - (customerPrice * item.discount_percent / 100);
     }
@@ -196,7 +207,7 @@ const FeaturedItems: React.FC = () => {
                   <div className="flex items-center gap-1">
                     {showDiscount && (
                       <span className="text-xs text-muted-foreground line-through">
-                        ₹{getCustomerPrice(item).toFixed(0)}
+                        ₹{getCustomerPrice(item, lowestCookPrices).toFixed(0)}
                       </span>
                     )}
                     <span className="font-semibold text-foreground">
