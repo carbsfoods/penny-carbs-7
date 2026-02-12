@@ -16,14 +16,26 @@ import CartButton from '@/components/customer/CartButton';
 import BottomNav from '@/components/customer/BottomNav';
 import { calculatePlatformMargin } from '@/lib/priceUtils';
 import { useCookAllocatedItemIds } from '@/hooks/useCookAllocatedItems';
+import { useLowestCookPrices } from '@/hooks/useLowestCookPrices';
 
-// Helper to calculate customer display price
-const getCustomerPrice = (item: FoodItemWithImages): number => {
+// Helper to calculate customer display price, using lowest cook price for homemade
+const getCustomerPrice = (item: FoodItemWithImages, lowestCookPrices?: Map<string, number | null>): number => {
   const itemWithMargin = item as FoodItemWithImages & { platform_margin_type?: string; platform_margin_value?: number };
   const marginType = (itemWithMargin.platform_margin_type || 'percent') as 'percent' | 'fixed';
   const marginValue = itemWithMargin.platform_margin_value || 0;
-  const margin = calculatePlatformMargin(item.price, marginType, marginValue);
-  return item.price + margin;
+  
+  let basePrice = item.price;
+  const serviceTypes = (item as any).service_types || [];
+  const isHomemade = item.service_type === 'homemade' || serviceTypes.includes('homemade');
+  if (isHomemade && lowestCookPrices) {
+    const lowestPrice = lowestCookPrices.get(item.id);
+    if (lowestPrice !== undefined && lowestPrice !== null) {
+      basePrice = Math.min(basePrice, lowestPrice);
+    }
+  }
+  
+  const margin = calculatePlatformMargin(basePrice, marginType, marginValue);
+  return basePrice + margin;
 };
 
 const serviceTypeLabels: Record<ServiceType, { title: string; emoji: string }> = {
@@ -38,6 +50,7 @@ const Menu: React.FC = () => {
   const { addToCart } = useCart();
   const { requireAuth, showLoginDialog, setShowLoginDialog, onLoginSuccess } = useAuthCheck();
   const { data: allocatedIds } = useCookAllocatedItemIds();
+  const { lowestCookPrices } = useLowestCookPrices();
   
   const [items, setItems] = useState<FoodItemWithImages[]>([]);
   const [categories, setCategories] = useState<FoodCategory[]>([]);
@@ -243,7 +256,7 @@ const Menu: React.FC = () => {
                       </div>
                     )}
                     <div className="mt-3 flex items-center justify-between">
-                      <span className="text-lg font-bold">₹{getCustomerPrice(item).toFixed(0)}</span>
+                      <span className="text-lg font-bold">₹{getCustomerPrice(item, lowestCookPrices).toFixed(0)}</span>
                       <Button
                         size="sm"
                         variant="outline"

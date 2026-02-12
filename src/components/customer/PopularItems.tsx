@@ -12,13 +12,26 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Plus, Clock, ChevronRight } from 'lucide-react';
 import { calculatePlatformMargin } from '@/lib/priceUtils';
 import { useCookAllocatedItemIds } from '@/hooks/useCookAllocatedItems';
+import { useLowestCookPrices } from '@/hooks/useLowestCookPrices';
 
-// Helper to calculate customer display price (base + margin)
-const getCustomerPrice = (item: FoodItemWithImages): number => {
+// Helper to calculate customer display price (base + margin), using lowest cook price for homemade
+const getCustomerPrice = (item: FoodItemWithImages, lowestCookPrices?: Map<string, number | null>): number => {
   const marginType = ((item as any).platform_margin_type || 'percent') as 'percent' | 'fixed';
   const marginValue = (item as any).platform_margin_value || 0;
-  const margin = calculatePlatformMargin(item.price, marginType, marginValue);
-  return item.price + margin;
+  
+  let basePrice = item.price;
+  // For homemade items, use lowest cook price if available
+  const serviceTypes = (item as any).service_types || [];
+  const isHomemade = item.service_type === 'homemade' || serviceTypes.includes('homemade');
+  if (isHomemade && lowestCookPrices) {
+    const lowestPrice = lowestCookPrices.get(item.id);
+    if (lowestPrice !== undefined && lowestPrice !== null) {
+      basePrice = Math.min(basePrice, lowestPrice);
+    }
+  }
+  
+  const margin = calculatePlatformMargin(basePrice, marginType, marginValue);
+  return basePrice + margin;
 };
 
 interface PopularItemsProps {
@@ -47,6 +60,7 @@ const PopularItems: React.FC<PopularItemsProps> = ({
   const { selectedPanchayat } = useLocation();
   const { requireAuth, showLoginDialog, setShowLoginDialog, onLoginSuccess } = useAuthCheck();
   const { data: allocatedIds, isLoading: allocatedIdsLoading } = useCookAllocatedItemIds();
+  const { lowestCookPrices } = useLowestCookPrices();
   const [items, setItems] = useState<FoodItemWithImages[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -180,7 +194,7 @@ const PopularItems: React.FC<PopularItemsProps> = ({
                   </div>
                 )}
                 <div className="mt-2 flex items-center justify-between">
-                  <span className="font-semibold text-foreground">₹{getCustomerPrice(item).toFixed(0)}</span>
+                  <span className="font-semibold text-foreground">₹{getCustomerPrice(item, lowestCookPrices).toFixed(0)}</span>
                   {isIndoorEvents ? (
                     <Button
                       size="sm"
