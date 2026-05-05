@@ -4,7 +4,6 @@ import OperationalModules from '@/components/customer/OperationalModules';
 import BannerCarousel from '@/components/customer/BannerCarousel';
 import SpecialOffers from '@/components/customer/SpecialOffers';
 import FeaturedItems from '@/components/customer/FeaturedItems';
-import ServiceCards from '@/components/customer/ServiceCards';
 import PopularItems from '@/components/customer/PopularItems';
 import CartButton from '@/components/customer/CartButton';
 import BottomNav from '@/components/customer/BottomNav';
@@ -51,7 +50,6 @@ const Index: React.FC = () => {
         <BannerCarousel />
         <SpecialOffers />
         <FeaturedItems activeServiceTypes={activeTypes} />
-        <ServiceCards />
         
         {isActive('indoor_events') && (
           <PopularItems 
