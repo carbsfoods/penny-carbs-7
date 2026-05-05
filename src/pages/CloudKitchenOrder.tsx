@@ -1,7 +1,7 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useServiceModuleGuard } from '@/hooks/useServiceModuleGuard';
 import { useLocation } from '@/contexts/LocationContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation as useRouterLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ArrowLeft, ChefHat, ShoppingBag } from 'lucide-react';
@@ -32,6 +32,8 @@ interface CartItem {
 const CloudKitchenOrder: React.FC = () => {
   useServiceModuleGuard('cloud_kitchen');
   const navigate = useNavigate();
+  const routerLocation = useRouterLocation();
+  const preselectedSlotId = (routerLocation.state as { preselectedSlotId?: string } | null)?.preselectedSlotId;
   const { selectedPanchayat } = useLocation();
   const [selectedDivision, setSelectedDivision] = useState<ActiveDivision | null>(null);
   const [cart, setCart] = useState<Record<string, CartItem>>({});
@@ -41,6 +43,13 @@ const CloudKitchenOrder: React.FC = () => {
     selectedDivision?.id || null,
     selectedPanchayat?.id || null
   );
+
+  // Auto-select preselected slot from navigation state
+  useEffect(() => {
+    if (selectedDivision || !preselectedSlotId || !divisions) return;
+    const match = divisions.find((d) => d.id === preselectedSlotId && d.is_ordering_open);
+    if (match) setSelectedDivision(match);
+  }, [divisions, preselectedSlotId, selectedDivision]);
 
   // Group items by food_item_id
   const groupedItems = useMemo<GroupedFoodItem[]>(() => {
