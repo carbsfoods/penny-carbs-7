@@ -6,10 +6,10 @@ import { useCustomerDivisions } from '@/hooks/useCustomerCloudKitchen';
 import { cn } from '@/lib/utils';
 
 const slotIcons: Record<string, React.ReactNode> = {
-  breakfast: <Coffee className="h-5 w-5" />,
-  lunch: <Sun className="h-5 w-5" />,
-  evening_snacks: <Sunset className="h-5 w-5" />,
-  dinner: <Moon className="h-5 w-5" />,
+  breakfast: <Coffee className="h-6 w-6" />,
+  lunch: <Sun className="h-6 w-6" />,
+  evening_snacks: <Sunset className="h-6 w-6" />,
+  dinner: <Moon className="h-6 w-6" />,
 };
 
 const OperationalModules: React.FC = () => {
@@ -25,15 +25,15 @@ const OperationalModules: React.FC = () => {
   if (!showEvents && !showCloudKitchen) return null;
 
   return (
-    <div className="sticky top-16 z-40 w-full border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
-      <div className="flex items-center gap-2 overflow-x-auto px-2 py-2 scrollbar-hide">
+    <div className="sticky top-16 z-40 w-full border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 shadow-sm">
+      <div className="flex items-center gap-3 overflow-x-auto px-3 py-3 scrollbar-hide">
         {showEvents && (
           <button
             onClick={() => navigate('/indoor-events')}
-            className="flex flex-shrink-0 items-center gap-2 rounded-xl bg-indoor-events/10 px-3 py-2.5 transition-all hover:scale-[1.02] active:scale-[0.98]"
+            className="flex flex-shrink-0 items-center gap-2.5 rounded-2xl bg-indoor-events px-5 py-3 shadow-md transition-all hover:scale-[1.03] hover:shadow-lg active:scale-[0.97]"
           >
-            <Calendar className="h-5 w-5 text-indoor-events" />
-            <span className="text-sm font-medium text-indoor-events">Events</span>
+            <Calendar className="h-6 w-6 text-white" />
+            <span className="text-base font-semibold text-white">Events</span>
           </button>
         )}
 
@@ -47,16 +47,23 @@ const OperationalModules: React.FC = () => {
               }
               disabled={!div.is_ordering_open}
               className={cn(
-                'flex flex-shrink-0 items-center gap-2 rounded-xl bg-cloud-kitchen/10 px-3 py-2.5 transition-all',
+                'flex flex-shrink-0 items-center gap-2.5 rounded-2xl px-5 py-3 shadow-md transition-all',
                 div.is_ordering_open
-                  ? 'hover:scale-[1.02] active:scale-[0.98]'
-                  : 'opacity-50 cursor-not-allowed'
+                  ? 'bg-cloud-kitchen hover:scale-[1.03] hover:shadow-lg active:scale-[0.97]'
+                  : 'bg-muted opacity-60 cursor-not-allowed'
               )}
             >
-              <span className="text-cloud-kitchen">
-                {slotIcons[div.slot_type] || <Clock className="h-5 w-5" />}
+              <span className={div.is_ordering_open ? 'text-white' : 'text-muted-foreground'}>
+                {slotIcons[div.slot_type] || <Clock className="h-6 w-6" />}
               </span>
-              <span className="text-sm font-medium text-cloud-kitchen">{div.name}</span>
+              <span
+                className={cn(
+                  'text-base font-semibold',
+                  div.is_ordering_open ? 'text-white' : 'text-muted-foreground'
+                )}
+              >
+                {div.name}
+              </span>
             </button>
           ))}
       </div>
