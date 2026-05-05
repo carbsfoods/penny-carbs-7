@@ -1,77 +1,64 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Calendar, ChefHat, Home } from 'lucide-react';
-import type { ServiceType } from '@/types/database';
+import { Calendar, Clock, Coffee, Sun, Sunset, Moon } from 'lucide-react';
 import { useActiveServiceTypes } from '@/hooks/useServiceModules';
+import { useCustomerDivisions } from '@/hooks/useCustomerCloudKitchen';
+import { cn } from '@/lib/utils';
 
-interface ServiceModule {
-  id: ServiceType;
-  title: string;
-  icon: React.ReactNode;
-  color: string;
-  bgColor: string;
-}
-
-const modules: ServiceModule[] = [
-  {
-    id: 'indoor_events',
-    title: 'Events',
-    icon: <Calendar className="h-5 w-5" />,
-    color: 'text-indoor-events',
-    bgColor: 'bg-indoor-events/10',
-  },
-  {
-    id: 'cloud_kitchen',
-    title: 'Cloud Kitchen',
-    icon: <ChefHat className="h-5 w-5" />,
-    color: 'text-cloud-kitchen',
-    bgColor: 'bg-cloud-kitchen/10',
-  },
-  {
-    id: 'homemade',
-    title: 'Homemade',
-    icon: <Home className="h-5 w-5" />,
-    color: 'text-homemade',
-    bgColor: 'bg-homemade/10',
-  },
-];
+const slotIcons: Record<string, React.ReactNode> = {
+  breakfast: <Coffee className="h-5 w-5" />,
+  lunch: <Sun className="h-5 w-5" />,
+  evening_snacks: <Sunset className="h-5 w-5" />,
+  dinner: <Moon className="h-5 w-5" />,
+};
 
 const OperationalModules: React.FC = () => {
   const navigate = useNavigate();
   const { data: activeTypes, isLoading } = useActiveServiceTypes();
+  const { data: divisions } = useCustomerDivisions();
 
-  const filteredModules = activeTypes
-    ? modules.filter((m) => activeTypes.includes(m.id))
-    : modules;
-
-  const handleModuleClick = (serviceType: ServiceType) => {
-    if (serviceType === 'indoor_events') {
-      navigate('/indoor-events');
-    } else if (serviceType === 'cloud_kitchen') {
-      navigate('/cloud-kitchen');
-    } else if (serviceType === 'homemade') {
-      navigate('/homemade');
-    }
-  };
+  const isActive = (type: string) => activeTypes?.includes(type) ?? false;
+  const showEvents = isActive('indoor_events');
+  const showCloudKitchen = isActive('cloud_kitchen');
 
   if (isLoading) return null;
-  if (filteredModules.length === 0) return null;
+  if (!showEvents && !showCloudKitchen) return null;
 
   return (
     <div className="sticky top-16 z-40 w-full border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
-      <div className="flex items-center justify-around gap-2 px-2 py-2">
-        {filteredModules.map((module) => (
+      <div className="flex items-center gap-2 overflow-x-auto px-2 py-2 scrollbar-hide">
+        {showEvents && (
           <button
-            key={module.id}
-            onClick={() => handleModuleClick(module.id)}
-            className={`flex flex-1 items-center justify-center gap-2 rounded-xl px-3 py-2.5 transition-all hover:scale-[1.02] active:scale-[0.98] ${module.bgColor}`}
+            onClick={() => navigate('/indoor-events')}
+            className="flex flex-shrink-0 items-center gap-2 rounded-xl bg-indoor-events/10 px-3 py-2.5 transition-all hover:scale-[1.02] active:scale-[0.98]"
           >
-            <span className={module.color}>{module.icon}</span>
-            <span className={`text-sm font-medium ${module.color}`}>
-              {module.title}
-            </span>
+            <Calendar className="h-5 w-5 text-indoor-events" />
+            <span className="text-sm font-medium text-indoor-events">Events</span>
           </button>
-        ))}
+        )}
+
+        {showCloudKitchen &&
+          divisions?.map((div) => (
+            <button
+              key={div.id}
+              onClick={() =>
+                div.is_ordering_open &&
+                navigate('/cloud-kitchen', { state: { preselectedSlotId: div.id } })
+              }
+              disabled={!div.is_ordering_open}
+              className={cn(
+                'flex flex-shrink-0 items-center gap-2 rounded-xl bg-cloud-kitchen/10 px-3 py-2.5 transition-all',
+                div.is_ordering_open
+                  ? 'hover:scale-[1.02] active:scale-[0.98]'
+                  : 'opacity-50 cursor-not-allowed'
+              )}
+            >
+              <span className="text-cloud-kitchen">
+                {slotIcons[div.slot_type] || <Clock className="h-5 w-5" />}
+              </span>
+              <span className="text-sm font-medium text-cloud-kitchen">{div.name}</span>
+            </button>
+          ))}
       </div>
     </div>
   );
