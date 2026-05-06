@@ -25,9 +25,6 @@ const GoogleMapPicker: React.FC<GoogleMapPickerProps> = ({
   height = '250px',
 }) => {
   const { apiKey, isLoading: isKeyLoading } = useGoogleMapsKey();
-  const { isLoaded, loadError } = useJsApiLoader({
-    googleMapsApiKey: apiKey,
-  });
 
   const mapRef = useRef<google.maps.Map | null>(null);
   const [markerPosition, setMarkerPosition] = useState<google.maps.LatLngLiteral>(
