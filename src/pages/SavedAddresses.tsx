@@ -12,7 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/hooks/use-toast';
 import {
-  ArrowLeft, MapPin, Plus, Home, Building, Pencil, Trash2, Star, Loader2,
+  ArrowLeft, MapPin, Plus, Home, Building, Pencil, Trash2, Star, Loader2, Crosshair, X,
 } from 'lucide-react';
 import GoogleMapPicker from '@/components/google-maps/GoogleMapPicker';
 import {
