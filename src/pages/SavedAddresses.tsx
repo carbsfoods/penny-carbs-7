@@ -12,7 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/hooks/use-toast';
 import {
-  ArrowLeft, MapPin, Plus, Home, Building, Pencil, Trash2, Star, Loader2,
+  ArrowLeft, MapPin, Plus, Home, Building, Pencil, Trash2, Star, Loader2, Crosshair, X,
 } from 'lucide-react';
 import GoogleMapPicker from '@/components/google-maps/GoogleMapPicker';
 import {
@@ -39,6 +39,33 @@ const SavedAddresses: React.FC = () => {
   const [isDefault, setIsDefault] = useState(false);
   const [addressLat, setAddressLat] = useState<number | null>(null);
   const [addressLng, setAddressLng] = useState<number | null>(null);
+  const [isLocating, setIsLocating] = useState(false);
+
+  const handleUseCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      toast({ title: 'Geolocation not supported', description: 'Your browser does not support location access.', variant: 'destructive' });
+      return;
+    }
+    setIsLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setAddressLat(pos.coords.latitude);
+        setAddressLng(pos.coords.longitude);
+        setIsLocating(false);
+        toast({ title: 'Location captured', description: `Accuracy: ±${Math.round(pos.coords.accuracy)}m` });
+      },
+      (err) => {
+        setIsLocating(false);
+        const msg =
+          err.code === err.PERMISSION_DENIED ? 'Permission denied. Please allow location access in your browser.' :
+          err.code === err.POSITION_UNAVAILABLE ? 'Location unavailable. Try again outdoors.' :
+          err.code === err.TIMEOUT ? 'Location request timed out. Please try again.' :
+          'Could not get your location.';
+        toast({ title: 'Location error', description: msg, variant: 'destructive' });
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  };
 
   const resetForm = () => {
     setAddressLabel('Home');
@@ -187,6 +214,37 @@ const SavedAddresses: React.FC = () => {
             <DialogDescription>Save your address for faster checkout</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Button
+                type="button"
+                variant="default"
+                className="w-full"
+                onClick={handleUseCurrentLocation}
+                disabled={isLocating}
+              >
+                {isLocating ? (
+                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Getting location...</>
+                ) : (
+                  <><Crosshair className="h-4 w-4 mr-2" /> Use my current location</>
+                )}
+              </Button>
+              {addressLat != null && addressLng != null && (
+                <div className="flex items-center justify-between rounded-md bg-muted px-3 py-2 text-xs">
+                  <span className="flex items-center gap-1 text-muted-foreground">
+                    <MapPin className="h-3 w-3" />
+                    Pinned: {addressLat.toFixed(5)}, {addressLng.toFixed(5)}
+                  </span>
+                  <button
+                    type="button"
+                    className="flex items-center gap-1 text-destructive hover:underline"
+                    onClick={() => { setAddressLat(null); setAddressLng(null); }}
+                  >
+                    <X className="h-3 w-3" /> Clear
+                  </button>
+                </div>
+              )}
+            </div>
+
             <div className="space-y-2">
               <Label>Address Label</Label>
               <div className="flex gap-2">
