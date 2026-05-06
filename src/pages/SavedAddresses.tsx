@@ -39,6 +39,33 @@ const SavedAddresses: React.FC = () => {
   const [isDefault, setIsDefault] = useState(false);
   const [addressLat, setAddressLat] = useState<number | null>(null);
   const [addressLng, setAddressLng] = useState<number | null>(null);
+  const [isLocating, setIsLocating] = useState(false);
+
+  const handleUseCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      toast({ title: 'Geolocation not supported', description: 'Your browser does not support location access.', variant: 'destructive' });
+      return;
+    }
+    setIsLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setAddressLat(pos.coords.latitude);
+        setAddressLng(pos.coords.longitude);
+        setIsLocating(false);
+        toast({ title: 'Location captured', description: `Accuracy: ±${Math.round(pos.coords.accuracy)}m` });
+      },
+      (err) => {
+        setIsLocating(false);
+        const msg =
+          err.code === err.PERMISSION_DENIED ? 'Permission denied. Please allow location access in your browser.' :
+          err.code === err.POSITION_UNAVAILABLE ? 'Location unavailable. Try again outdoors.' :
+          err.code === err.TIMEOUT ? 'Location request timed out. Please try again.' :
+          'Could not get your location.';
+        toast({ title: 'Location error', description: msg, variant: 'destructive' });
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  };
 
   const resetForm = () => {
     setAddressLabel('Home');
