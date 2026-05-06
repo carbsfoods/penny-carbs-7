@@ -11,20 +11,20 @@ interface GoogleMapPickerProps {
   height?: string;
 }
 
-const DEFAULT_CENTER = { lat: 10.8505, lng: 76.2711 }; // Kerala, India
+const DEFAULT_CENTER = { lat: 10.8505, lng: 76.2711 };
 
-const containerStyle = {
-  width: '100%',
-  height: '100%',
-};
+const containerStyle = { width: '100%', height: '100%' };
 
-const GoogleMapPicker: React.FC<GoogleMapPickerProps> = ({
+const MapInner: React.FC<GoogleMapPickerProps & { apiKey: string }> = ({
   latitude,
   longitude,
   onLocationChange,
   height = '250px',
+  apiKey,
 }) => {
-  const { apiKey, isLoading: isKeyLoading } = useGoogleMapsKey();
+  const { isLoaded, loadError } = useJsApiLoader({
+    googleMapsApiKey: apiKey,
+  });
 
   const mapRef = useRef<google.maps.Map | null>(null);
   const [markerPosition, setMarkerPosition] = useState<google.maps.LatLngLiteral>(
@@ -74,7 +74,7 @@ const GoogleMapPicker: React.FC<GoogleMapPickerProps> = ({
     );
   }
 
-  if (!isLoaded || isKeyLoading) {
+  if (!isLoaded) {
     return (
       <div className="flex items-center justify-center rounded-lg border bg-muted" style={{ height }}>
         <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -122,6 +122,21 @@ const GoogleMapPicker: React.FC<GoogleMapPickerProps> = ({
       </p>
     </div>
   );
+};
+
+const GoogleMapPicker: React.FC<GoogleMapPickerProps> = (props) => {
+  const { apiKey, isLoading } = useGoogleMapsKey();
+  const height = props.height || '250px';
+
+  if (isLoading || !apiKey) {
+    return (
+      <div className="flex items-center justify-center rounded-lg border bg-muted" style={{ height }}>
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  return <MapInner {...props} apiKey={apiKey} />;
 };
 
 export default GoogleMapPicker;
