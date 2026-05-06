@@ -215,6 +215,37 @@ const SavedAddresses: React.FC = () => {
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
+              <Button
+                type="button"
+                variant="default"
+                className="w-full"
+                onClick={handleUseCurrentLocation}
+                disabled={isLocating}
+              >
+                {isLocating ? (
+                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Getting location...</>
+                ) : (
+                  <><Crosshair className="h-4 w-4 mr-2" /> Use my current location</>
+                )}
+              </Button>
+              {addressLat != null && addressLng != null && (
+                <div className="flex items-center justify-between rounded-md bg-muted px-3 py-2 text-xs">
+                  <span className="flex items-center gap-1 text-muted-foreground">
+                    <MapPin className="h-3 w-3" />
+                    Pinned: {addressLat.toFixed(5)}, {addressLng.toFixed(5)}
+                  </span>
+                  <button
+                    type="button"
+                    className="flex items-center gap-1 text-destructive hover:underline"
+                    onClick={() => { setAddressLat(null); setAddressLng(null); }}
+                  >
+                    <X className="h-3 w-3" /> Clear
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-2">
               <Label>Address Label</Label>
               <div className="flex gap-2">
                 {['Home', 'Work', 'Other'].map((label) => (
