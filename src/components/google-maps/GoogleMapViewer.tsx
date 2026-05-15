@@ -16,13 +16,13 @@ const containerStyle = {
   height: '100%',
 };
 
-const GoogleMapViewer: React.FC<GoogleMapViewerProps> = ({
+const MapViewerInner: React.FC<GoogleMapViewerProps & { apiKey: string }> = ({
   latitude,
   longitude,
   height = '200px',
   label,
+  apiKey,
 }) => {
-  const { apiKey, isLoading: isKeyLoading } = useGoogleMapsKey();
   const { isLoaded, loadError } = useJsApiLoader({
     googleMapsApiKey: apiKey,
   });
@@ -44,7 +44,7 @@ const GoogleMapViewer: React.FC<GoogleMapViewerProps> = ({
     );
   }
 
-  if (!isLoaded || isKeyLoading) {
+  if (!isLoaded) {
     return (
       <div className="flex items-center justify-center rounded-lg border bg-muted" style={{ height }}>
         <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -86,6 +86,29 @@ const GoogleMapViewer: React.FC<GoogleMapViewerProps> = ({
       </div>
     </div>
   );
+};
+
+const GoogleMapViewer: React.FC<GoogleMapViewerProps> = (props) => {
+  const { apiKey, isLoading } = useGoogleMapsKey();
+  const height = props.height || '200px';
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center rounded-lg border bg-muted" style={{ height }}>
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (!apiKey) {
+    return (
+      <div className="flex items-center justify-center rounded-lg border bg-muted p-3 text-sm text-muted-foreground" style={{ height }}>
+        Map unavailable
+      </div>
+    );
+  }
+
+  return <MapViewerInner {...props} apiKey={apiKey} />;
 };
 
 export default GoogleMapViewer;
